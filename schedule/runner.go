@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"claude-squad/config"
@@ -70,6 +71,30 @@ func LoadAndClearPendingInstances() ([]session.InstanceData, error) {
 	return pending, nil
 }
 
+// waitForReady polls the instance's tmux pane until the program shows its
+// input prompt (e.g. Claude Code's "❯" prompt), or times out after 30 seconds.
+func waitForReady(instance *session.Instance) error {
+	timeout := time.After(30 * time.Second)
+	ticker := time.NewTicker(500 * time.Millisecond)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-timeout:
+			return fmt.Errorf("timed out waiting for program to start (30s)")
+		case <-ticker.C:
+			content, err := instance.Preview()
+			if err != nil {
+				continue
+			}
+			// Claude Code shows "❯" when ready for input
+			if strings.Contains(content, "❯") {
+				return nil
+			}
+		}
+	}
+}
+
 // RunScheduledTask executes a scheduled task by creating a new instance,
 // sending the prompt, and registering it in the application state.
 func RunScheduledTask(scheduleID string) error {
@@ -123,6 +148,12 @@ func RunScheduledTask(scheduleID string) error {
 
 	if err := instance.Start(true); err != nil {
 		return fmt.Errorf("failed to start instance: %w", err)
+	}
+
+	// Wait for the program to be ready before sending the prompt.
+	// Claude Code (and similar tools) take a few seconds to initialize.
+	if err := waitForReady(instance); err != nil {
+		return fmt.Errorf("program did not become ready: %w", err)
 	}
 
 	if err := instance.SendPrompt(s.Prompt); err != nil {
