@@ -185,14 +185,25 @@ func newHome(ctx context.Context, program string, autoYes bool, repoID string) *
 			grouped[rid] = append(grouped[rid], d)
 		}
 		for rid, group := range grouped {
-			existing, _ := config.LoadRepoInstances(rid)
+			existing, err := config.LoadRepoInstances(rid)
+			if err != nil {
+				log.WarningLog.Printf("Failed to load existing instances for repo %s: %v", rid, err)
+			}
 			var existingData []session.InstanceData
 			if existing != nil && string(existing) != "[]" && string(existing) != "null" {
-				json.Unmarshal(existing, &existingData)
+				if err := json.Unmarshal(existing, &existingData); err != nil {
+					log.WarningLog.Printf("Failed to parse existing instances for repo %s: %v", rid, err)
+				}
 			}
 			existingData = append(existingData, group...)
-			jsonData, _ := json.Marshal(existingData)
-			config.SaveRepoInstances(rid, jsonData)
+			jsonData, err := json.Marshal(existingData)
+			if err != nil {
+				log.WarningLog.Printf("Failed to marshal instances for repo %s: %v", rid, err)
+				continue
+			}
+			if err := config.SaveRepoInstances(rid, jsonData); err != nil {
+				log.WarningLog.Printf("Failed to save instances for repo %s: %v", rid, err)
+			}
 		}
 	}
 

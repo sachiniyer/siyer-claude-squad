@@ -35,7 +35,10 @@ func appendPendingInstance(data session.InstanceData) error {
 
 	var pending []session.InstanceData
 	if raw, err := os.ReadFile(path); err == nil {
-		json.Unmarshal(raw, &pending)
+		if err := json.Unmarshal(raw, &pending); err != nil {
+			log.WarningLog.Printf("failed to parse pending instances file, starting fresh: %v", err)
+			pending = nil
+		}
 	}
 	pending = append(pending, data)
 
