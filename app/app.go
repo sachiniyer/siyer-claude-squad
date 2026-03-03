@@ -808,7 +808,11 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			return m, m.handleError(fmt.Errorf("failed to list worktrees: %v", err))
 		}
 
-		// Filter out worktrees already tracked by existing instances
+		if len(worktrees) == 0 {
+			return m, m.handleError(fmt.Errorf("no worktrees found"))
+		}
+
+		// Mark worktrees that already have a session
 		trackedPaths := make(map[string]bool)
 		for _, inst := range m.list.GetInstances() {
 			if p := inst.GetWorktreePath(); p != "" {
@@ -816,28 +820,20 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			}
 		}
 
-		var available []git.WorktreeInfo
-		for _, wt := range worktrees {
-			if !trackedPaths[wt.Path] {
-				available = append(available, wt)
-			}
-		}
-
-		if len(available) == 0 {
-			return m, m.handleError(fmt.Errorf("no untracked worktrees found"))
-		}
-
 		// Build display items
-		items := make([]string, len(available))
-		for i, wt := range available {
+		items := make([]string, len(worktrees))
+		for i, wt := range worktrees {
+			label := wt.Path
 			if wt.Branch != "" {
-				items[i] = fmt.Sprintf("%s (%s)", wt.Branch, wt.Path)
-			} else {
-				items[i] = wt.Path
+				label = fmt.Sprintf("%s (%s)", wt.Branch, wt.Path)
 			}
+			if trackedPaths[wt.Path] {
+				label += " [has session]"
+			}
+			items[i] = label
 		}
 
-		m.availableWorktrees = available
+		m.availableWorktrees = worktrees
 		m.selectionOverlay = overlay.NewSelectionOverlay("Attach to existing worktree", items)
 		m.selectionOverlay.SetWidth(60)
 		m.state = stateSelectWorktree
