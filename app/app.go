@@ -136,12 +136,33 @@ func newHome(ctx context.Context, program string, autoYes bool) *home {
 		os.Exit(1)
 	}
 
+	// Merge any pending instances from scheduled runs
+	pendingData, err := schedule.LoadAndClearPendingInstances()
+	if err != nil {
+		log.WarningLog.Printf("Failed to load pending instances: %v", err)
+	}
+	for _, data := range pendingData {
+		pendingInstance, err := session.FromInstanceData(data)
+		if err != nil {
+			log.WarningLog.Printf("Failed to restore pending instance %s: %v", data.Title, err)
+			continue
+		}
+		instances = append(instances, pendingInstance)
+	}
+
 	// Add loaded instances to the list
 	for _, instance := range instances {
 		// Call the finalizer immediately.
 		h.list.AddInstance(instance)()
 		if autoYes {
 			instance.AutoYes = true
+		}
+	}
+
+	// Save instances so pending ones are now in state.json
+	if len(pendingData) > 0 {
+		if err := storage.SaveInstances(h.list.GetInstances()); err != nil {
+			log.WarningLog.Printf("Failed to save merged instances: %v", err)
 		}
 	}
 

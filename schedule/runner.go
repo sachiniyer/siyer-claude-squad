@@ -14,6 +14,62 @@ import (
 	"claude-squad/session/git"
 )
 
+const pendingInstancesFileName = "pending_instances.json"
+
+func getPendingInstancesPath() (string, error) {
+	configDir, err := config.GetConfigDir()
+	if err != nil {
+		return "", err
+	}
+	return filepath.Join(configDir, pendingInstancesFileName), nil
+}
+
+// appendPendingInstance appends an instance to the pending_instances.json file.
+// This file is used by the runner to avoid racing with the daemon on state.json.
+func appendPendingInstance(data session.InstanceData) error {
+	path, err := getPendingInstancesPath()
+	if err != nil {
+		return err
+	}
+
+	var pending []session.InstanceData
+	if raw, err := os.ReadFile(path); err == nil {
+		json.Unmarshal(raw, &pending)
+	}
+	pending = append(pending, data)
+
+	out, err := json.MarshalIndent(pending, "", "  ")
+	if err != nil {
+		return err
+	}
+	return os.WriteFile(path, out, 0644)
+}
+
+// LoadAndClearPendingInstances reads pending instances written by scheduled runs
+// and removes the file. The TUI should call this at startup to merge them in.
+func LoadAndClearPendingInstances() ([]session.InstanceData, error) {
+	path, err := getPendingInstancesPath()
+	if err != nil {
+		return nil, err
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return nil, nil
+		}
+		return nil, err
+	}
+
+	var pending []session.InstanceData
+	if err := json.Unmarshal(raw, &pending); err != nil {
+		return nil, err
+	}
+
+	os.Remove(path)
+	return pending, nil
+}
+
 // RunScheduledTask executes a scheduled task by creating a new instance,
 // sending the prompt, and registering it in the application state.
 func RunScheduledTask(scheduleID string) error {
@@ -73,20 +129,10 @@ func RunScheduledTask(scheduleID string) error {
 		return fmt.Errorf("failed to send prompt: %w", err)
 	}
 
-	// Append instance to state.json directly, without calling LoadInstances
-	// which tries to restore tmux sessions and would fail headlessly.
-	state := config.LoadState()
-	var existingInstances []session.InstanceData
-	if err := json.Unmarshal(state.GetInstances(), &existingInstances); err != nil {
-		existingInstances = []session.InstanceData{}
-	}
-	existingInstances = append(existingInstances, instance.ToInstanceData())
-	newJSON, err := json.Marshal(existingInstances)
-	if err != nil {
-		return fmt.Errorf("failed to marshal instances: %w", err)
-	}
-	if err := state.SaveInstances(newJSON); err != nil {
-		return fmt.Errorf("failed to save instances: %w", err)
+	// Write instance to a separate pending file to avoid racing with the
+	// daemon/TUI which also read-modify-write state.json concurrently.
+	if err := appendPendingInstance(instance.ToInstanceData()); err != nil {
+		return fmt.Errorf("failed to save pending instance: %w", err)
 	}
 
 	// Launch daemon for autoyes if configured.
