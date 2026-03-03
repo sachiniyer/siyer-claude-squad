@@ -275,7 +275,7 @@ func (t *TmuxSession) Attach() (chan struct{}, error) {
 		default:
 			// If context is not done, it was likely an abnormal termination (Ctrl-D)
 			// Print warning message
-			fmt.Fprintf(os.Stderr, "\n\033[31mError: Session terminated without detaching. Use Ctrl-Q to properly detach from tmux sessions.\033[0m\n")
+			fmt.Fprintf(os.Stderr, "\n\033[31mError: Session terminated without detaching. Use Ctrl-\\ to properly detach from tmux sessions.\033[0m\n")
 		}
 	}()
 
@@ -312,8 +312,8 @@ func (t *TmuxSession) Attach() (chan struct{}, error) {
 				continue
 			}
 
-			// Check for Ctrl+q (ASCII 17)
-			if nr == 1 && buf[0] == 17 {
+			// Check for Ctrl+\ (ASCII 28)
+			if nr == 1 && buf[0] == 28 {
 				// Detach from the session
 				t.Detach()
 				return

@@ -99,7 +99,7 @@ The menu at the bottom of the screen shows available commands:
 
 ##### Actions
 - `↵/o` - Attach to the selected session to reprompt
-- `ctrl-q` - Detach from session
+- `ctrl-\` - Detach from session
 - `s` - Commit and push branch to github
 - `c` - Checkout. Commits changes and pauses the session
 - `r` - Resume a paused session
