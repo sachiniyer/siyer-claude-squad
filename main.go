@@ -6,6 +6,7 @@ import (
 	"claude-squad/config"
 	"claude-squad/daemon"
 	"claude-squad/log"
+	"claude-squad/schedule"
 	"claude-squad/session"
 	"claude-squad/session/git"
 	"claude-squad/session/tmux"
@@ -160,6 +161,7 @@ func init() {
 	rootCmd.AddCommand(debugCmd)
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(resetCmd)
+	rootCmd.AddCommand(schedule.ScheduleCmd)
 }
 
 func main() {

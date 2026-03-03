@@ -4,12 +4,14 @@ import (
 	"claude-squad/config"
 	"claude-squad/keys"
 	"claude-squad/log"
+	"claude-squad/schedule"
 	"claude-squad/session"
 	"claude-squad/ui"
 	"claude-squad/ui/overlay"
 	"context"
 	"fmt"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -43,6 +45,8 @@ const (
 	stateHelp
 	// stateConfirm is the state when a confirmation modal is displayed.
 	stateConfirm
+	// stateSchedule is the state when the user is creating a schedule.
+	stateSchedule
 )
 
 type home struct {
@@ -92,6 +96,8 @@ type home struct {
 	textOverlay *overlay.TextOverlay
 	// confirmationOverlay displays confirmation modals
 	confirmationOverlay *overlay.ConfirmationOverlay
+	// scheduleOverlay handles schedule creation input
+	scheduleOverlay *overlay.ScheduleOverlay
 }
 
 func newHome(ctx context.Context, program string, autoYes bool) *home {
@@ -162,6 +168,9 @@ func (m *home) updateHandleWindowSizeEvent(msg tea.WindowSizeMsg) {
 	}
 	if m.textOverlay != nil {
 		m.textOverlay.SetWidth(int(float32(msg.Width) * 0.6))
+	}
+	if m.scheduleOverlay != nil {
+		m.scheduleOverlay.SetSize(int(float32(msg.Width)*0.6), int(float32(msg.Height)*0.5))
 	}
 
 	previewWidth, previewHeight := m.tabbedWindow.GetPreviewSize()
@@ -299,7 +308,7 @@ func (m *home) handleMenuHighlighting(msg tea.KeyMsg) (cmd tea.Cmd, returnEarly 
 		m.keySent = false
 		return nil, false
 	}
-	if m.state == statePrompt || m.state == stateHelp || m.state == stateConfirm {
+	if m.state == statePrompt || m.state == stateHelp || m.state == stateConfirm || m.state == stateSchedule {
 		return nil, false
 	}
 	// If it's in the global keymap, we should try to highlight it.
@@ -446,6 +455,58 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle schedule state
+	if m.state == stateSchedule {
+		shouldClose := m.scheduleOverlay.HandleKeyPress(msg)
+		if shouldClose {
+			if m.scheduleOverlay.IsSubmitted() {
+				cronExpr := m.scheduleOverlay.GetCronExpr()
+				if err := schedule.ValidateCronExpr(cronExpr); err != nil {
+					m.scheduleOverlay = nil
+					m.state = stateDefault
+					m.menu.SetState(ui.StateDefault)
+					return m, m.handleError(fmt.Errorf("invalid cron: %v", err))
+				}
+				projectPath := m.scheduleOverlay.GetPath()
+				absPath, err := filepath.Abs(projectPath)
+				if err != nil {
+					m.scheduleOverlay = nil
+					m.state = stateDefault
+					m.menu.SetState(ui.StateDefault)
+					return m, m.handleError(fmt.Errorf("invalid path: %v", err))
+				}
+				s := schedule.Schedule{
+					ID:          schedule.GenerateID(),
+					Prompt:      m.scheduleOverlay.GetPrompt(),
+					CronExpr:    cronExpr,
+					ProjectPath: absPath,
+					Program:     m.program,
+					Enabled:     true,
+					CreatedAt:   time.Now(),
+				}
+				if err := schedule.AddSchedule(s); err != nil {
+					m.scheduleOverlay = nil
+					m.state = stateDefault
+					m.menu.SetState(ui.StateDefault)
+					return m, m.handleError(fmt.Errorf("failed to save schedule: %v", err))
+				}
+				if err := schedule.InstallSystemdTimer(s); err != nil {
+					log.WarningLog.Printf("failed to install systemd timer: %v", err)
+				}
+			}
+			m.scheduleOverlay = nil
+			m.state = stateDefault
+			return m, tea.Sequence(
+				tea.WindowSize(),
+				func() tea.Msg {
+					m.menu.SetState(ui.StateDefault)
+					return nil
+				},
+			)
+		}
+		return m, nil
+	}
+
 	// Handle confirmation state
 	if m.state == stateConfirm {
 		shouldClose := m.confirmationOverlay.HandleKeyPress(msg)
@@ -512,6 +573,47 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		m.promptAfterName = true
 
 		return m, nil
+	case keys.KeyScheduleList:
+		schedules, err := schedule.LoadSchedules()
+		if err != nil {
+			return m, m.handleError(fmt.Errorf("failed to load schedules: %v", err))
+		}
+		if len(schedules) == 0 {
+			return m, m.handleError(fmt.Errorf("no schedules found — press S to create one"))
+		}
+		content := lipgloss.NewStyle().Bold(true).Underline(true).Foreground(lipgloss.Color("#7D56F4")).Render("Scheduled Tasks") + "\n\n"
+		for _, s := range schedules {
+			status := "enabled"
+			if !s.Enabled {
+				status = "disabled"
+			}
+			lastRun := "never"
+			if s.LastRunAt != nil {
+				lastRun = s.LastRunAt.Format("Jan 02 15:04")
+			}
+			content += lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFCC00")).Render(s.ID) +
+				"  " + s.CronExpr + "  " + status + "\n"
+			content += "  " + lipgloss.NewStyle().Foreground(lipgloss.Color("#36CFC9")).Render(s.Program) +
+				"  " + s.ProjectPath + "\n"
+			content += "  Prompt: " + truncateString(s.Prompt, 60) + "\n"
+			content += "  Last run: " + lastRun
+			if s.LastRunStatus != "" {
+				content += " (" + s.LastRunStatus + ")"
+			}
+			content += "\n\n"
+		}
+		m.textOverlay = overlay.NewTextOverlay(content)
+		m.state = stateHelp
+		return m, nil
+	case keys.KeySchedule:
+		cwd, err := os.Getwd()
+		if err != nil {
+			cwd = "."
+		}
+		m.scheduleOverlay = overlay.NewScheduleOverlay(cwd)
+		m.state = stateSchedule
+		m.menu.SetState(ui.StateSchedule)
+		return m, tea.WindowSize()
 	case keys.KeyNew:
 		if m.list.NumInstances() >= GlobalInstanceLimit {
 			return m, m.handleError(
@@ -770,6 +872,13 @@ func (m *home) confirmAction(message string, action tea.Cmd) tea.Cmd {
 	return nil
 }
 
+func truncateString(s string, max int) string {
+	if len(s) <= max {
+		return s
+	}
+	return s[:max-3] + "..."
+}
+
 func (m *home) View() string {
 	listWithPadding := lipgloss.NewStyle().PaddingTop(1).Render(m.list.String())
 	previewWithPadding := lipgloss.NewStyle().PaddingTop(1).Render(m.tabbedWindow.String())
@@ -792,6 +901,11 @@ func (m *home) View() string {
 			log.ErrorLog.Printf("text overlay is nil")
 		}
 		return overlay.PlaceOverlay(0, 0, m.textOverlay.Render(), mainView, true, true)
+	} else if m.state == stateSchedule {
+		if m.scheduleOverlay == nil {
+			log.ErrorLog.Printf("schedule overlay is nil")
+		}
+		return overlay.PlaceOverlay(0, 0, m.scheduleOverlay.Render(), mainView, true, true)
 	} else if m.state == stateConfirm {
 		if m.confirmationOverlay == nil {
 			log.ErrorLog.Printf("confirmation overlay is nil")

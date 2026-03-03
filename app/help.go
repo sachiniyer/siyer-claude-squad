@@ -42,10 +42,12 @@ func (h helpTypeGeneral) toContent() string {
 		headerStyle.Render("Managing:"),
 		keyStyle.Render("n")+descStyle.Render("         - Create a new session"),
 		keyStyle.Render("N")+descStyle.Render("         - Create a new session with a prompt"),
+		keyStyle.Render("s")+descStyle.Render("         - Schedule a recurring task"),
+		keyStyle.Render("S")+descStyle.Render("         - List scheduled tasks"),
 		keyStyle.Render("D")+descStyle.Render("         - Kill (delete) the selected session"),
 		keyStyle.Render("↑/j, ↓/k")+descStyle.Render("  - Navigate between sessions"),
 		keyStyle.Render("↵/o")+descStyle.Render("       - Attach to the selected session"),
-		keyStyle.Render("ctrl-q")+descStyle.Render("    - Detach from session"),
+		keyStyle.Render("ctrl-\\")+descStyle.Render("   - Detach from session"),
 		"",
 		headerStyle.Render("Handoff:"),
 		keyStyle.Render("p")+descStyle.Render("         - Commit and push branch to github"),
@@ -86,7 +88,7 @@ func (h helpTypeInstanceAttach) toContent() string {
 	content := lipgloss.JoinVertical(lipgloss.Left,
 		titleStyle.Render("Attaching to Instance"),
 		"",
-		descStyle.Render("To detach from a session, press ")+keyStyle.Render("ctrl-q"),
+		descStyle.Render("To detach from a session, press ")+keyStyle.Render("ctrl-\\"),
 	)
 	return content
 }
