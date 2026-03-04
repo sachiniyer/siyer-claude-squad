@@ -400,6 +400,7 @@ func (m *home) handleQuit() (tea.Model, tea.Cmd) {
 	if err := m.storage.SaveInstances(m.list.GetInstances()); err != nil {
 		return m, m.handleError(err)
 	}
+	m.tabbedWindow.CleanupNanoClaw()
 	return m, tea.Quit
 }
 
@@ -749,6 +750,11 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			m.tabbedWindow.ResetTerminalToNormalMode()
 			return m, m.instanceChanged()
 		}
+		// If in nanoclaw tab and in scroll mode, exit scroll mode
+		if m.tabbedWindow.IsInNanoClawTab() && m.tabbedWindow.IsNanoClawInScrollMode() {
+			m.tabbedWindow.ResetNanoClawToNormalMode()
+			return m, m.instanceChanged()
+		}
 	}
 
 	// Handle quit commands first
@@ -1024,6 +1030,19 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		}
 		return m, tea.WindowSize()
 	case keys.KeyEnter:
+		// NanoClaw tab: attach to nanoclaw TUI session (no instance needed)
+		if m.tabbedWindow.IsInNanoClawTab() {
+			m.showHelpScreen(helpTypeInstanceAttach{}, func() {
+				ch, err := m.tabbedWindow.AttachNanoClaw()
+				if err != nil {
+					m.handleError(err)
+					return
+				}
+				<-ch
+				m.state = stateDefault
+			})
+			return m, nil
+		}
 		if m.list.NumInstances() == 0 {
 			return m, nil
 		}

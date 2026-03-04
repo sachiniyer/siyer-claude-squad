@@ -3,6 +3,7 @@ package ui
 import (
 	"claude-squad/log"
 	"claude-squad/session"
+	"fmt"
 	"github.com/charmbracelet/lipgloss"
 )
 
@@ -224,6 +225,36 @@ func (w *TabbedWindow) CleanupTerminal() {
 // CleanupTerminalForInstance closes the cached terminal session for the given instance title.
 func (w *TabbedWindow) CleanupTerminalForInstance(title string) {
 	w.terminal.CloseForInstance(title)
+}
+
+// AttachNanoClaw attaches to the nanoclaw tmux session for full interactive use.
+func (w *TabbedWindow) AttachNanoClaw() (chan struct{}, error) {
+	if w.nanoclaw == nil {
+		return nil, fmt.Errorf("nanoclaw pane not available")
+	}
+	return w.nanoclaw.Attach()
+}
+
+// CleanupNanoClaw closes the nanoclaw tmux session.
+func (w *TabbedWindow) CleanupNanoClaw() {
+	if w.nanoclaw != nil {
+		w.nanoclaw.Close()
+	}
+}
+
+// IsNanoClawInScrollMode returns true if the nanoclaw pane is in scroll mode.
+func (w *TabbedWindow) IsNanoClawInScrollMode() bool {
+	if w.nanoclaw == nil {
+		return false
+	}
+	return w.nanoclaw.IsScrolling()
+}
+
+// ResetNanoClawToNormalMode exits scroll mode on the nanoclaw pane.
+func (w *TabbedWindow) ResetNanoClawToNormalMode() {
+	if w.nanoclaw != nil {
+		w.nanoclaw.ResetToNormalMode()
+	}
 }
 
 // IsPreviewInScrollMode returns true if the preview pane is in scroll mode
