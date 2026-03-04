@@ -49,9 +49,10 @@ type tuiModel struct {
 // NewTUIModel creates a new interactive TUI model for a nanoclaw group.
 func NewTUIModel(bridge *Bridge, group Group, meta *MessageMeta) tuiModel {
 	ti := textarea.New()
-	ti.Placeholder = "Type a message..."
+	ti.Placeholder = ""
+	ti.Prompt = "> "
 	ti.CharLimit = 2000
-	ti.SetHeight(3)
+	ti.SetHeight(1)
 	ti.Focus()
 
 	return tuiModel{
@@ -104,8 +105,8 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.height = msg.Height
 		m.ready = true
 
-		// Layout: status(1) + separator(1) + viewport + input(5) + help(1)
-		inputHeight := 5
+		// Layout: status(1) + separator(1) + viewport + input(1) + help(1)
+		inputHeight := 1
 		headerHeight := 2
 		helpHeight := 1
 		vpHeight := m.height - inputHeight - headerHeight - helpHeight
