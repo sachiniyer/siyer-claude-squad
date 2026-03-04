@@ -901,6 +901,9 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			if wt.Branch != "" {
 				label = fmt.Sprintf("%s (%s)", wt.Branch, wt.Path)
 			}
+			if wt.IsMainWorktree {
+				label += " [root]"
+			}
 			if trackedPaths[wt.Path] {
 				label += " [has session]"
 			}
