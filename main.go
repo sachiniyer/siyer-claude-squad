@@ -1,6 +1,7 @@
 package main
 
 import (
+	"claude-squad/api"
 	"claude-squad/app"
 	cmd2 "claude-squad/cmd"
 	"claude-squad/config"
@@ -167,6 +168,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(resetCmd)
 	rootCmd.AddCommand(schedule.ScheduleCmd)
+	rootCmd.AddCommand(api.ApiCmd)
 }
 
 func main() {

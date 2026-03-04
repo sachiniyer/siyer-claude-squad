@@ -33,6 +33,7 @@ const (
 	KeyScheduleList
 	KeyAttach
 	KeyTasks
+	KeyNanoClaw // Key for sending a message to nanoclaw
 )
 
 // GlobalKeyStringsMap is a global, immutable map string to keybinding.
@@ -58,6 +59,7 @@ var GlobalKeyStringsMap = map[string]KeyName{
 	"S":          KeyScheduleList,
 	"a":          KeyAttach,
 	"t":          KeyTasks,
+	"m":          KeyNanoClaw,
 }
 
 // GlobalkeyBindings is a global, immutable map of KeyName tot keybinding.
@@ -134,6 +136,10 @@ var GlobalkeyBindings = map[KeyName]key.Binding{
 	KeyTasks: key.NewBinding(
 		key.WithKeys("t"),
 		key.WithHelp("t", "tasks"),
+	),
+	KeyNanoClaw: key.NewBinding(
+		key.WithKeys("m"),
+		key.WithHelp("m", "nanoclaw"),
 	),
 
 	// -- Special keybindings --

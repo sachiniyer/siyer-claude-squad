@@ -4,6 +4,7 @@ import (
 	"claude-squad/config"
 	"claude-squad/keys"
 	"claude-squad/log"
+	"claude-squad/nanoclaw"
 	"claude-squad/schedule"
 	"claude-squad/session"
 	"claude-squad/session/git"
@@ -54,6 +55,8 @@ const (
 	stateSelectWorktree
 	// stateTaskList is the state when the task list overlay is displayed.
 	stateTaskList
+	// stateNanoClaw is the state when the user is composing a nanoclaw message.
+	stateNanoClaw
 )
 
 type home struct {
@@ -114,6 +117,11 @@ type home struct {
 	availableWorktrees []git.WorktreeInfo
 	// taskListOverlay handles task list management
 	taskListOverlay *overlay.TaskListOverlay
+
+	// nanoclawBridge is the bridge to the nanoclaw instance
+	nanoclawBridge *nanoclaw.Bridge
+	// nanoclawGroups caches the nanoclaw groups for the message overlay
+	nanoclawGroups []nanoclaw.Group
 }
 
 func newHome(ctx context.Context, program string, autoYes bool, repoID string) *home {
@@ -130,19 +138,28 @@ func newHome(ctx context.Context, program string, autoYes bool, repoID string) *
 		os.Exit(1)
 	}
 
+	// Initialize nanoclaw bridge
+	ncDir := os.Getenv("NANOCLAW_DIR")
+	ncBridge := nanoclaw.NewBridge(ncDir)
+	var ncPane *ui.NanoClawPane
+	if ncBridge.Available() {
+		ncPane = ui.NewNanoClawPane(ncBridge)
+	}
+
 	h := &home{
-		ctx:          ctx,
-		spinner:      spinner.New(spinner.WithSpinner(spinner.MiniDot)),
-		menu:         ui.NewMenu(),
-		tabbedWindow: ui.NewTabbedWindow(ui.NewPreviewPane(), ui.NewDiffPane(), ui.NewTerminalPane()),
-		errBox:       ui.NewErrBox(),
-		storage:      storage,
-		appConfig:    appConfig,
-		program:      program,
-		autoYes:      autoYes,
-		repoID:       repoID,
-		state:        stateDefault,
-		appState:     appState,
+		ctx:            ctx,
+		spinner:        spinner.New(spinner.WithSpinner(spinner.MiniDot)),
+		menu:           ui.NewMenu(),
+		tabbedWindow:   ui.NewTabbedWindow(ui.NewPreviewPane(), ui.NewDiffPane(), ui.NewTerminalPane(), ncPane),
+		errBox:         ui.NewErrBox(),
+		storage:        storage,
+		appConfig:      appConfig,
+		program:        program,
+		autoYes:        autoYes,
+		repoID:         repoID,
+		state:          stateDefault,
+		appState:       appState,
+		nanoclawBridge: ncBridge,
 	}
 	h.list = ui.NewList(&h.spinner, autoYes)
 
@@ -282,6 +299,7 @@ func (m *home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case hideErrMsg:
 		m.errBox.Clear()
 	case previewTickMsg:
+		m.tabbedWindow.UpdateNanoClaw()
 		cmd := m.instanceChanged()
 		return m, tea.Batch(
 			cmd,
@@ -392,7 +410,7 @@ func (m *home) handleMenuHighlighting(msg tea.KeyMsg) (cmd tea.Cmd, returnEarly 
 		m.keySent = false
 		return nil, false
 	}
-	if m.state == statePrompt || m.state == stateHelp || m.state == stateConfirm || m.state == stateSchedule || m.state == stateSelectWorktree || m.state == stateTaskList {
+	if m.state == statePrompt || m.state == stateHelp || m.state == stateConfirm || m.state == stateSchedule || m.state == stateSelectWorktree || m.state == stateTaskList || m.state == stateNanoClaw {
 		return nil, false
 	}
 	// If it's in the global keymap, we should try to highlight it.
@@ -660,6 +678,47 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle nanoclaw message state
+	if m.state == stateNanoClaw {
+		shouldClose := m.textInputOverlay.HandleKeyPress(msg)
+		if shouldClose {
+			if m.textInputOverlay.IsSubmitted() {
+				text := m.textInputOverlay.GetValue()
+				if text != "" && len(m.nanoclawGroups) > 0 {
+					// Send to the main group with repo metadata
+					group := m.nanoclawGroups[0]
+					for _, g := range m.nanoclawGroups {
+						if g.IsMain == 1 {
+							group = g
+							break
+						}
+					}
+					// Gather repo metadata
+					meta := &nanoclaw.MessageMeta{
+						Program: m.program,
+					}
+					if cwd, err := os.Getwd(); err == nil {
+						meta.RepoPath = cwd
+					}
+					if repo, err := config.CurrentRepo(); err == nil {
+						meta.RepoID = config.RepoIDFromRoot(repo.Root)
+					}
+					if err := m.nanoclawBridge.SendMessage(group.Folder, text, meta); err != nil {
+						m.textInputOverlay = nil
+						m.state = stateDefault
+						m.menu.SetState(ui.StateDefault)
+						return m, m.handleError(fmt.Errorf("failed to send nanoclaw message: %v", err))
+					}
+				}
+			}
+			m.textInputOverlay = nil
+			m.state = stateDefault
+			m.menu.SetState(ui.StateDefault)
+			return m, tea.WindowSize()
+		}
+		return m, nil
+	}
+
 	// Handle confirmation state
 	if m.state == stateConfirm {
 		shouldClose := m.confirmationOverlay.HandleKeyPress(msg)
@@ -776,6 +835,30 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		m.taskListOverlay.SetWidth(60)
 		m.state = stateTaskList
 		return m, nil
+	case keys.KeyNanoClaw:
+		if m.nanoclawBridge == nil || !m.nanoclawBridge.Available() {
+			return m, m.handleError(fmt.Errorf("NanoClaw not available — set NANOCLAW_DIR or install at ~/nanoclaw"))
+		}
+		groups, err := m.nanoclawBridge.ListGroups()
+		if err != nil {
+			return m, m.handleError(fmt.Errorf("failed to list nanoclaw groups: %v", err))
+		}
+		if len(groups) == 0 {
+			return m, m.handleError(fmt.Errorf("no nanoclaw groups found"))
+		}
+		m.nanoclawGroups = groups
+		// Find the main group name for the overlay title
+		groupName := groups[0].Name
+		for _, g := range groups {
+			if g.IsMain == 1 {
+				groupName = g.Name
+				break
+			}
+		}
+		m.textInputOverlay = overlay.NewTextInputOverlay(fmt.Sprintf("Message NanoClaw (%s)", groupName), "")
+		m.state = stateNanoClaw
+		m.menu.SetState(ui.StatePrompt)
+		return m, tea.WindowSize()
 	case keys.KeyNew:
 		if m.list.NumInstances() >= GlobalInstanceLimit {
 			return m, m.handleError(
@@ -1125,6 +1208,11 @@ func (m *home) View() string {
 			log.ErrorLog.Printf("task list overlay is nil")
 		}
 		return overlay.PlaceOverlay(0, 0, m.taskListOverlay.Render(), mainView, true, true)
+	} else if m.state == stateNanoClaw {
+		if m.textInputOverlay == nil {
+			log.ErrorLog.Printf("text input overlay is nil")
+		}
+		return overlay.PlaceOverlay(0, 0, m.textInputOverlay.Render(), mainView, true, true)
 	}
 
 	return mainView

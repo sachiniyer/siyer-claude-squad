@@ -20,11 +20,8 @@ type Task struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-func getTasksPath() (string, error) {
-	repo, err := config.CurrentRepo()
-	if err != nil {
-		return "", err
-	}
+// getTasksPathForRepo returns the tasks file path for a specific repo context.
+func getTasksPathForRepo(repo *config.RepoContext) (string, error) {
 	dir, err := repo.DataDir("tasks")
 	if err != nil {
 		return "", err
@@ -32,8 +29,17 @@ func getTasksPath() (string, error) {
 	return filepath.Join(dir, tasksFileName), nil
 }
 
-func LoadTasks() ([]Task, error) {
-	path, err := getTasksPath()
+func getTasksPath() (string, error) {
+	repo, err := config.CurrentRepo()
+	if err != nil {
+		return "", err
+	}
+	return getTasksPathForRepo(repo)
+}
+
+// LoadTasksForRepo loads tasks for a specific repo context.
+func LoadTasksForRepo(repo *config.RepoContext) ([]Task, error) {
+	path, err := getTasksPathForRepo(repo)
 	if err != nil {
 		return nil, err
 	}
@@ -54,8 +60,17 @@ func LoadTasks() ([]Task, error) {
 	return tasks, nil
 }
 
-func SaveTasks(tasks []Task) error {
-	path, err := getTasksPath()
+func LoadTasks() ([]Task, error) {
+	repo, err := config.CurrentRepo()
+	if err != nil {
+		return nil, err
+	}
+	return LoadTasksForRepo(repo)
+}
+
+// SaveTasksForRepo saves tasks for a specific repo context.
+func SaveTasksForRepo(repo *config.RepoContext, tasks []Task) error {
+	path, err := getTasksPathForRepo(repo)
 	if err != nil {
 		return err
 	}
@@ -73,19 +88,38 @@ func SaveTasks(tasks []Task) error {
 	return os.WriteFile(path, data, 0644)
 }
 
-func AddTask(title string) error {
-	tasks, err := LoadTasks()
+func SaveTasks(tasks []Task) error {
+	repo, err := config.CurrentRepo()
 	if err != nil {
 		return err
 	}
+	return SaveTasksForRepo(repo, tasks)
+}
 
-	tasks = append(tasks, Task{
+// AddTaskForRepo adds a task for a specific repo context.
+func AddTaskForRepo(repo *config.RepoContext, title string) (Task, error) {
+	tasks, err := LoadTasksForRepo(repo)
+	if err != nil {
+		return Task{}, err
+	}
+
+	t := Task{
 		ID:        GenerateID(),
 		Title:     title,
 		Done:      false,
 		CreatedAt: time.Now(),
-	})
-	return SaveTasks(tasks)
+	}
+	tasks = append(tasks, t)
+	return t, SaveTasksForRepo(repo, tasks)
+}
+
+func AddTask(title string) error {
+	repo, err := config.CurrentRepo()
+	if err != nil {
+		return err
+	}
+	_, err = AddTaskForRepo(repo, title)
+	return err
 }
 
 func UpdateTask(id, title string) error {
@@ -110,8 +144,9 @@ func UpdateTask(id, title string) error {
 	return SaveTasks(tasks)
 }
 
-func ToggleTask(id string) error {
-	tasks, err := LoadTasks()
+// ToggleTaskForRepo toggles a task's done status for a specific repo context.
+func ToggleTaskForRepo(repo *config.RepoContext, id string) error {
+	tasks, err := LoadTasksForRepo(repo)
 	if err != nil {
 		return err
 	}
@@ -129,11 +164,20 @@ func ToggleTask(id string) error {
 		return fmt.Errorf("task with id %q not found", id)
 	}
 
-	return SaveTasks(tasks)
+	return SaveTasksForRepo(repo, tasks)
 }
 
-func DeleteTask(id string) error {
-	tasks, err := LoadTasks()
+func ToggleTask(id string) error {
+	repo, err := config.CurrentRepo()
+	if err != nil {
+		return err
+	}
+	return ToggleTaskForRepo(repo, id)
+}
+
+// DeleteTaskForRepo deletes a task for a specific repo context.
+func DeleteTaskForRepo(repo *config.RepoContext, id string) error {
+	tasks, err := LoadTasksForRepo(repo)
 	if err != nil {
 		return err
 	}
@@ -152,7 +196,15 @@ func DeleteTask(id string) error {
 		return fmt.Errorf("task with id %q not found", id)
 	}
 
-	return SaveTasks(filtered)
+	return SaveTasksForRepo(repo, filtered)
+}
+
+func DeleteTask(id string) error {
+	repo, err := config.CurrentRepo()
+	if err != nil {
+		return err
+	}
+	return DeleteTaskForRepo(repo, id)
 }
 
 func GenerateID() string {

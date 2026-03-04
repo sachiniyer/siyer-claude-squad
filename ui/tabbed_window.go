@@ -34,6 +34,7 @@ const (
 	PreviewTab int = iota
 	DiffTab
 	TerminalTab
+	NanoClawTab
 )
 
 type Tab struct {
@@ -53,19 +54,21 @@ type TabbedWindow struct {
 	preview  *PreviewPane
 	diff     *DiffPane
 	terminal *TerminalPane
+	nanoclaw *NanoClawPane
 	instance *session.Instance
 }
 
-func NewTabbedWindow(preview *PreviewPane, diff *DiffPane, terminal *TerminalPane) *TabbedWindow {
+func NewTabbedWindow(preview *PreviewPane, diff *DiffPane, terminal *TerminalPane, nanoclaw *NanoClawPane) *TabbedWindow {
+	tabs := []string{"Preview", "Diff", "Terminal"}
+	if nanoclaw != nil {
+		tabs = append(tabs, "NanoClaw")
+	}
 	return &TabbedWindow{
-		tabs: []string{
-			"Preview",
-			"Diff",
-			"Terminal",
-		},
+		tabs:     tabs,
 		preview:  preview,
 		diff:     diff,
 		terminal: terminal,
+		nanoclaw: nanoclaw,
 	}
 }
 
@@ -93,6 +96,9 @@ func (w *TabbedWindow) SetSize(width, height int) {
 	w.preview.SetSize(contentWidth, contentHeight)
 	w.diff.SetSize(contentWidth, contentHeight)
 	w.terminal.SetSize(contentWidth, contentHeight)
+	if w.nanoclaw != nil {
+		w.nanoclaw.SetSize(contentWidth, contentHeight)
+	}
 }
 
 func (w *TabbedWindow) GetPreviewSize() (width, height int) {
@@ -145,6 +151,10 @@ func (w *TabbedWindow) ScrollUp() {
 		if err := w.terminal.ScrollUp(); err != nil {
 			log.InfoLog.Printf("tabbed window failed to scroll terminal up: %v", err)
 		}
+	case NanoClawTab:
+		if w.nanoclaw != nil {
+			w.nanoclaw.ScrollUp()
+		}
 	}
 }
 
@@ -160,6 +170,10 @@ func (w *TabbedWindow) ScrollDown() {
 	case TerminalTab:
 		if err := w.terminal.ScrollDown(); err != nil {
 			log.InfoLog.Printf("tabbed window failed to scroll terminal down: %v", err)
+		}
+	case NanoClawTab:
+		if w.nanoclaw != nil {
+			w.nanoclaw.ScrollDown()
 		}
 	}
 }
@@ -177,6 +191,19 @@ func (w *TabbedWindow) IsInDiffTab() bool {
 // IsInTerminalTab returns true if the terminal tab is currently active
 func (w *TabbedWindow) IsInTerminalTab() bool {
 	return w.activeTab == TerminalTab
+}
+
+// IsInNanoClawTab returns true if the nanoclaw tab is currently active
+func (w *TabbedWindow) IsInNanoClawTab() bool {
+	return w.activeTab == NanoClawTab
+}
+
+// UpdateNanoClaw refreshes the nanoclaw pane content. Only updates when the tab is active.
+func (w *TabbedWindow) UpdateNanoClaw() {
+	if w.activeTab != NanoClawTab || w.nanoclaw == nil {
+		return
+	}
+	w.nanoclaw.Refresh()
 }
 
 // GetActiveTab returns the currently active tab index
@@ -263,6 +290,10 @@ func (w *TabbedWindow) String() string {
 		content = w.diff.String()
 	case TerminalTab:
 		content = w.terminal.String()
+	case NanoClawTab:
+		if w.nanoclaw != nil {
+			content = w.nanoclaw.String()
+		}
 	}
 	window := windowStyle.Render(
 		lipgloss.Place(

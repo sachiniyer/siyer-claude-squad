@@ -74,9 +74,9 @@ func LoadAndClearPendingInstances() ([]session.InstanceData, error) {
 	return pending, nil
 }
 
-// waitForReady polls the instance's tmux pane until the program shows its
+// WaitForReady polls the instance's tmux pane until the program shows its
 // input prompt (e.g. Claude Code's "❯" prompt) or trust prompt, or times out after 60 seconds.
-func waitForReady(instance *session.Instance) error {
+func WaitForReady(instance *session.Instance) error {
 	timeout := time.After(60 * time.Second)
 	ticker := time.NewTicker(500 * time.Millisecond)
 	defer ticker.Stop()
@@ -156,7 +156,7 @@ func RunScheduledTask(scheduleID string) error {
 
 	// Wait for the program to be ready before sending the prompt.
 	// Claude Code (and similar tools) take a few seconds to initialize.
-	if err := waitForReady(instance); err != nil {
+	if err := WaitForReady(instance); err != nil {
 		return fmt.Errorf("program did not become ready: %w", err)
 	}
 
@@ -164,7 +164,7 @@ func RunScheduledTask(scheduleID string) error {
 	if instance.CheckAndHandleTrustPrompt() {
 		log.InfoLog.Printf("trust prompt detected and dismissed, waiting for ready again")
 		time.Sleep(1 * time.Second)
-		if err := waitForReady(instance); err != nil {
+		if err := WaitForReady(instance); err != nil {
 			return fmt.Errorf("program did not become ready after trust prompt: %w", err)
 		}
 	}
