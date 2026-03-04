@@ -1,8 +1,10 @@
 - [x] create a session against an existing worktree instead of a new one
 - [x] task management of some sort outside of the worktrees (almost like todo list for the agents to do)
 - [x] per-repo scoping for instances, tasks, and schedule filtering
-- [ ] conductor style claude code/nanoclaw interface to communicate with all the sessions
-  - [ ] slack integration for this
-  - [ ] tui configs for this as well
-- [ ] better graphite integration
+- [x] conductor style claude code/nanoclaw interface to communicate with all the sessions
+  - [x] slack integration for this
+  - [x] tui configs for this as well
+- [ ] extra confirmation for uncommitted/local only commits
+- [ ] create a session without a worktree
 - [ ] hooks to install dependencies and make install/make build scripts
+- [ ] better graphite integration
