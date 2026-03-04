@@ -909,30 +909,25 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 
 		// Create the kill action as a tea.Cmd
 		killAction := func() tea.Msg {
-			// Get worktree and check if branch is checked out
+			// Check if branch is checked out — this is the only hard abort.
 			worktree, err := selected.GetGitWorktree()
-			if err != nil {
-				return err
+			if err == nil {
+				checkedOut, checkErr := worktree.IsBranchCheckedOut()
+				if checkErr == nil && checkedOut {
+					return fmt.Errorf("instance %s is currently checked out", selected.Title)
+				}
 			}
 
-			checkedOut, err := worktree.IsBranchCheckedOut()
-			if err != nil {
-				return err
-			}
-
-			if checkedOut {
-				return fmt.Errorf("instance %s is currently checked out", selected.Title)
-			}
-
-			// Clean up terminal session for this instance
+			// From here on, always attempt every cleanup step independently.
+			// Clean up terminal session for this instance.
 			m.tabbedWindow.CleanupTerminalForInstance(selected.Title)
 
-			// Kill the instance first (tmux session + git worktree)
+			// Kill the instance (tmux session + git worktree).
 			m.list.Kill()
 
-			// Then delete from storage
+			// Delete from storage.
 			if err := m.storage.DeleteInstance(selected.Title); err != nil {
-				return err
+				log.ErrorLog.Printf("failed to delete instance from storage: %v", err)
 			}
 
 			return instanceChangedMsg{}
