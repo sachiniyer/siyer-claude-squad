@@ -18,8 +18,6 @@ const (
 	KeyShiftTab   // ShiftTab cycles panes in reverse.
 	KeySubmitName // SubmitName is a special keybinding for submitting the name of a new instance.
 
-	KeyCheckout
-	KeyResume
 	KeyPrompt // New key for entering a prompt
 	KeyHelp   // Key for showing help screen
 
@@ -56,8 +54,6 @@ var GlobalKeyStringsMap = map[string]KeyName{
 	"q":          KeyQuit,
 	"tab":        KeyTab,
 	"shift+tab":  KeyShiftTab,
-	"c":          KeyCheckout,
-	"r":          KeyResume,
 	"?":          KeyHelp,
 	"s":          KeySchedule,
 	"S":          KeyScheduleList,
@@ -114,10 +110,6 @@ var GlobalKeyBindings = map[KeyName]key.Binding{
 		key.WithKeys("N"),
 		key.WithHelp("N", "new with prompt"),
 	),
-	KeyCheckout: key.NewBinding(
-		key.WithKeys("c"),
-		key.WithHelp("c", "checkout"),
-	),
 	KeyTab: key.NewBinding(
 		key.WithKeys("tab"),
 		key.WithHelp("tab", "switch tab"),
@@ -126,11 +118,6 @@ var GlobalKeyBindings = map[KeyName]key.Binding{
 		key.WithKeys("shift+tab"),
 		key.WithHelp("shift+tab", "prev tab"),
 	),
-	KeyResume: key.NewBinding(
-		key.WithKeys("r"),
-		key.WithHelp("r", "resume"),
-	),
-
 	KeySchedule: key.NewBinding(
 		key.WithKeys("s"),
 		key.WithHelp("s", "schedule"),

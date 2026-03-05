@@ -235,6 +235,8 @@ func (s *SchedulePane) renderListMode() string {
 	disabledStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#9C9494"))
 	hintStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7F7A7A"))
 	detailStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#7F7A7A"))
+	promptStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#FFFFFF"))
+	sepLineStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3C3C3C"))
 
 	var b strings.Builder
 	b.WriteString(tStyle.Render("Scheduled Tasks"))
@@ -245,7 +247,19 @@ func (s *SchedulePane) renderListMode() string {
 		b.WriteString("\n")
 	}
 
+	// Available width for word-wrapping prompt text (account for indent)
+	wrapWidth := s.width - 6
+	if wrapWidth < 20 {
+		wrapWidth = 20
+	}
+
 	for i, sched := range s.schedules {
+		if i > 0 {
+			// Visual separator between schedules
+			sep := strings.Repeat("─", wrapWidth)
+			b.WriteString("  " + sepLineStyle.Render(sep) + "\n")
+		}
+
 		status := "[✓]"
 		style := enabledStyle
 		if !sched.Enabled {
@@ -253,29 +267,34 @@ func (s *SchedulePane) renderListMode() string {
 			style = disabledStyle
 		}
 
-		prompt := schedPaneTruncate(sched.Prompt, 40)
 		isSelected := i == s.selectedIdx
-		line := fmt.Sprintf("%s %s  %s", status, sched.CronExpr, prompt)
+		header := fmt.Sprintf("%s %s", status, sched.CronExpr)
 
 		if isSelected && s.hasFocus {
-			b.WriteString(selectedStyle.Render("▸ " + line))
+			b.WriteString(selectedStyle.Render("▸ " + header))
 		} else {
-			b.WriteString(style.Render("  " + line))
+			b.WriteString(style.Render("  " + header))
 		}
 		b.WriteString("\n")
 
-		if isSelected {
-			lastRun := "never"
-			if sched.LastRunAt != nil {
-				lastRun = sched.LastRunAt.Format("Jan 02 15:04")
-			}
-			detail := fmt.Sprintf("    %s • last: %s", sched.Program, lastRun)
-			if sched.LastRunStatus != "" {
-				detail += " (" + sched.LastRunStatus + ")"
-			}
-			b.WriteString(detailStyle.Render(detail))
+		// Full prompt text, word-wrapped
+		wrapped := schedPaneWordWrap(sched.Prompt, wrapWidth)
+		for _, line := range wrapped {
+			b.WriteString(promptStyle.Render("    " + line))
 			b.WriteString("\n")
 		}
+
+		// Program and last run info for all items
+		lastRun := "never"
+		if sched.LastRunAt != nil {
+			lastRun = sched.LastRunAt.Format("Jan 02 15:04")
+		}
+		detail := fmt.Sprintf("    %s • last: %s", sched.Program, lastRun)
+		if sched.LastRunStatus != "" {
+			detail += " (" + sched.LastRunStatus + ")"
+		}
+		b.WriteString(detailStyle.Render(detail))
+		b.WriteString("\n")
 	}
 
 	b.WriteString("\n")
@@ -340,10 +359,25 @@ func (s *SchedulePane) renderEditMode() string {
 	return b.String()
 }
 
-func schedPaneTruncate(str string, max int) string {
-	runes := []rune(str)
-	if len(runes) <= max {
-		return str
+// schedPaneWordWrap wraps text to fit within maxWidth, breaking on word boundaries.
+func schedPaneWordWrap(text string, maxWidth int) []string {
+	if maxWidth <= 0 {
+		return []string{text}
 	}
-	return string(runes[:max-3]) + "..."
+	words := strings.Fields(text)
+	if len(words) == 0 {
+		return []string{}
+	}
+	var lines []string
+	current := words[0]
+	for _, word := range words[1:] {
+		if len(current)+1+len(word) > maxWidth {
+			lines = append(lines, current)
+			current = word
+		} else {
+			current += " " + word
+		}
+	}
+	lines = append(lines, current)
+	return lines
 }

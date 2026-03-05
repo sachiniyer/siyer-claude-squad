@@ -152,11 +152,6 @@ func (m *Menu) addInstanceOptions() {
 
 	// Action group
 	actionGroup := []keys.KeyName{keys.KeyEnter}
-	if m.instance.Status == session.Paused {
-		actionGroup = append(actionGroup, keys.KeyResume)
-	} else {
-		actionGroup = append(actionGroup, keys.KeyCheckout)
-	}
 
 	// Navigation group (when in diff tab)
 	if m.activeTab == DiffTab || m.activeTab == TerminalTab {

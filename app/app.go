@@ -833,6 +833,18 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 
 	case keys.KeyNew:
+		// Context-aware: if on Schedules section, create a schedule instead
+		if m.sidebar.GetSelection().Kind == ui.SectionSchedules {
+			cwd, err := os.Getwd()
+			if err != nil {
+				cwd = "."
+			}
+			m.scheduleOverlay = overlay.NewScheduleOverlay(cwd)
+			m.state = stateSchedule
+			m.menu.SetState(ui.StateSchedule)
+			return m, tea.WindowSize()
+		}
+
 		if m.sidebar.NumInstances() >= GlobalInstanceLimit {
 			return m, m.handleError(
 				fmt.Errorf("you can't create more than %d instances", GlobalInstanceLimit))
@@ -970,61 +982,6 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 
 		message := fmt.Sprintf("[!] Kill session '%s'?", selected.Title)
 		return m, m.confirmAction(message, killAction)
-
-	case keys.KeyCheckout:
-		selected := m.sidebar.GetSelectedInstance()
-		if selected == nil || selected.Status == session.Loading {
-			return m, nil
-		}
-
-		doPause := func() {
-			if err := selected.Pause(); err != nil {
-				log.ErrorLog.Printf("failed to pause instance: %v", err)
-			}
-			tw.CleanupTerminalForInstance(selected.Title)
-			m.selectionChanged()
-		}
-
-		worktree, err := selected.GetGitWorktree()
-		if err == nil && !selected.Paused() {
-			var warnings []string
-			if dirty, _ := worktree.IsDirty(); dirty {
-				warnings = append(warnings, "has uncommitted changes")
-			}
-			if hasUnpushed, count, _ := worktree.HasUnpushedCommits(); hasUnpushed {
-				if count > 0 {
-					warnings = append(warnings, fmt.Sprintf("has %d unpushed commit(s)", count))
-				} else {
-					warnings = append(warnings, "branch not pushed to remote")
-				}
-			}
-
-			if len(warnings) > 0 {
-				msgText := fmt.Sprintf("[!] Checkout '%s'?\n", selected.Title)
-				for _, w := range warnings {
-					msgText += "  - " + w + "\n"
-				}
-				msgText += "Changes will be committed locally but NOT pushed."
-
-				return m, m.confirmAction(msgText, func() tea.Msg {
-					doPause()
-					return instanceChangedMsg{}
-				})
-			}
-		}
-
-		m.showHelpScreen(helpTypeInstanceCheckout{}, doPause)
-		return m, nil
-
-	case keys.KeyResume:
-		selected := m.sidebar.GetSelectedInstance()
-		if selected == nil || selected.Status == session.Loading {
-			return m, nil
-		}
-		if err := selected.Resume(); err != nil {
-			return m, m.handleError(err)
-		}
-		return m, tea.WindowSize()
 
 	case keys.KeyEnter:
 		sel := m.sidebar.GetSelection()
