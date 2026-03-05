@@ -21,7 +21,3 @@
   - Idle: content unchanged for extended period + no active prompt (distinguish from "Ready")
   - infrastructure already exists in HasUpdated() — just add more pattern matching to pane content
   - add distinct visual indicators per state (colors + icons in sidebar)
-- [ ] notifications — alert when sessions change state (finish, error, need input)
-  - terminal bell as minimum viable
-  - optional desktop notifications (libnotify on Linux, osascript on macOS)
-  - optional webhook/Slack support
