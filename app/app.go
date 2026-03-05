@@ -51,6 +51,8 @@ const (
 	stateConfirm
 	// stateSelectWorktree is the state when the user is selecting an existing worktree.
 	stateSelectWorktree
+	// stateSearch is the state when the user is searching sessions.
+	stateSearch
 )
 
 type home struct {
@@ -103,6 +105,8 @@ type home struct {
 	confirmationOverlay *overlay.ConfirmationOverlay
 	// selectionOverlay handles worktree selection
 	selectionOverlay *overlay.SelectionOverlay
+	// searchOverlay handles session search
+	searchOverlay *overlay.SearchOverlay
 	// selectedWorktree stores the worktree info selected by the user for attach
 	selectedWorktree *git.WorktreeInfo
 	// availableWorktrees stores the worktrees shown in the selection overlay
@@ -699,6 +703,22 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 	}
 
+	// Handle search state
+	if m.state == stateSearch {
+		shouldClose := m.searchOverlay.HandleKeyPress(msg)
+		if shouldClose {
+			if m.searchOverlay.IsSubmitted() {
+				if inst := m.searchOverlay.GetSelectedInstance(); inst != nil {
+					m.sidebar.SelectInstance(inst)
+				}
+			}
+			m.searchOverlay = nil
+			m.state = stateDefault
+			return m, tea.Sequence(tea.WindowSize(), m.selectionChanged())
+		}
+		return m, nil
+	}
+
 	// Route keys to content pane if it has focus (e.g., editing todos/schedules)
 	if m.contentPane.HasFocus() {
 		consumed := m.contentPane.HandleKeyPress(msg)
@@ -865,6 +885,16 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		// Navigate to MicroClaw section in sidebar
 		m.navigateToSection(ui.SectionMicroClaw)
 		return m, m.selectionChanged()
+
+	case keys.KeySearch:
+		instances := m.sidebar.GetInstances()
+		if len(instances) == 0 {
+			return m, m.handleError(fmt.Errorf("no sessions to search"))
+		}
+		m.searchOverlay = overlay.NewSearchOverlay(instances)
+		m.searchOverlay.SetWidth(60)
+		m.state = stateSearch
+		return m, nil
 
 	case keys.KeyAttach:
 		if m.sidebar.NumInstances() >= GlobalInstanceLimit {
@@ -1185,6 +1215,11 @@ func (m *home) View() string {
 			log.ErrorLog.Printf("selection overlay is nil")
 		}
 		return overlay.PlaceOverlay(0, 0, m.selectionOverlay.Render(), mainView, true)
+	} else if m.state == stateSearch {
+		if m.searchOverlay == nil {
+			log.ErrorLog.Printf("search overlay is nil")
+		}
+		return overlay.PlaceOverlay(0, 0, m.searchOverlay.Render(), mainView, true)
 	}
 
 	return mainView
