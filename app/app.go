@@ -49,8 +49,6 @@ const (
 	stateHelp
 	// stateConfirm is the state when a confirmation modal is displayed.
 	stateConfirm
-	// stateSchedule is the state when the user is creating a schedule.
-	stateSchedule
 	// stateSelectWorktree is the state when the user is selecting an existing worktree.
 	stateSelectWorktree
 )
@@ -103,8 +101,6 @@ type home struct {
 	textOverlay *overlay.TextOverlay
 	// confirmationOverlay displays confirmation modals
 	confirmationOverlay *overlay.ConfirmationOverlay
-	// scheduleOverlay handles schedule creation input
-	scheduleOverlay *overlay.ScheduleOverlay
 	// selectionOverlay handles worktree selection
 	selectionOverlay *overlay.SelectionOverlay
 	// selectedWorktree stores the worktree info selected by the user for attach
@@ -281,9 +277,6 @@ func (m *home) updateHandleWindowSizeEvent(msg tea.WindowSizeMsg) {
 	if m.textOverlay != nil {
 		m.textOverlay.SetWidth(int(float32(msg.Width) * 0.6))
 	}
-	if m.scheduleOverlay != nil {
-		m.scheduleOverlay.SetSize(int(float32(msg.Width)*0.6), int(float32(msg.Height)*0.5))
-	}
 	if m.selectionOverlay != nil {
 		m.selectionOverlay.SetWidth(int(float32(msg.Width) * 0.6))
 	}
@@ -458,12 +451,48 @@ func (m *home) saveContentPaneState() {
 	}
 }
 
+// handleScheduleCreate processes a pending schedule creation from the inline form.
+func (m *home) handleScheduleCreate() tea.Cmd {
+	sp := m.contentPane.SchedulePane()
+	prompt, cronExpr, projectPath := sp.ConsumePendingCreate()
+
+	if err := schedule.ValidateCronExpr(cronExpr); err != nil {
+		return m.handleError(fmt.Errorf("invalid cron: %v", err))
+	}
+	absPath, err := filepath.Abs(projectPath)
+	if err != nil {
+		return m.handleError(fmt.Errorf("invalid path: %v", err))
+	}
+	s := schedule.Schedule{
+		ID:          schedule.GenerateID(),
+		Prompt:      prompt,
+		CronExpr:    cronExpr,
+		ProjectPath: absPath,
+		Program:     m.program,
+		Enabled:     true,
+		CreatedAt:   time.Now(),
+	}
+	if err := schedule.AddSchedule(s); err != nil {
+		return m.handleError(fmt.Errorf("failed to save schedule: %v", err))
+	}
+	if err := schedule.InstallSystemdTimer(s); err != nil {
+		log.WarningLog.Printf("failed to install systemd timer: %v", err)
+	}
+	// Refresh sidebar and schedule pane
+	schedules, err := schedule.LoadSchedulesForCurrentRepo()
+	if err == nil {
+		m.sidebar.SetSchedules(schedules)
+		sp.SetSchedules(schedules)
+	}
+	return nil
+}
+
 func (m *home) handleMenuHighlighting(msg tea.KeyMsg) (cmd tea.Cmd, returnEarly bool) {
 	if m.keySent {
 		m.keySent = false
 		return nil, false
 	}
-	if m.state == statePrompt || m.state == stateHelp || m.state == stateConfirm || m.state == stateSchedule || m.state == stateSelectWorktree {
+	if m.state == statePrompt || m.state == stateHelp || m.state == stateConfirm || m.state == stateSelectWorktree {
 		return nil, false
 	}
 	// Don't highlight when content pane has focus
@@ -612,64 +641,6 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle schedule creation state
-	if m.state == stateSchedule {
-		shouldClose := m.scheduleOverlay.HandleKeyPress(msg)
-		if shouldClose {
-			if m.scheduleOverlay.IsSubmitted() {
-				cronExpr := m.scheduleOverlay.GetCronExpr()
-				if err := schedule.ValidateCronExpr(cronExpr); err != nil {
-					m.scheduleOverlay = nil
-					m.state = stateDefault
-					m.menu.SetState(ui.StateDefault)
-					return m, m.handleError(fmt.Errorf("invalid cron: %v", err))
-				}
-				projectPath := m.scheduleOverlay.GetPath()
-				absPath, err := filepath.Abs(projectPath)
-				if err != nil {
-					m.scheduleOverlay = nil
-					m.state = stateDefault
-					m.menu.SetState(ui.StateDefault)
-					return m, m.handleError(fmt.Errorf("invalid path: %v", err))
-				}
-				s := schedule.Schedule{
-					ID:          schedule.GenerateID(),
-					Prompt:      m.scheduleOverlay.GetPrompt(),
-					CronExpr:    cronExpr,
-					ProjectPath: absPath,
-					Program:     m.program,
-					Enabled:     true,
-					CreatedAt:   time.Now(),
-				}
-				if err := schedule.AddSchedule(s); err != nil {
-					m.scheduleOverlay = nil
-					m.state = stateDefault
-					m.menu.SetState(ui.StateDefault)
-					return m, m.handleError(fmt.Errorf("failed to save schedule: %v", err))
-				}
-				if err := schedule.InstallSystemdTimer(s); err != nil {
-					log.WarningLog.Printf("failed to install systemd timer: %v", err)
-				}
-				// Refresh sidebar schedules
-				schedules, err := schedule.LoadSchedulesForCurrentRepo()
-				if err == nil {
-					m.sidebar.SetSchedules(schedules)
-					m.contentPane.SchedulePane().SetSchedules(schedules)
-				}
-			}
-			m.scheduleOverlay = nil
-			m.state = stateDefault
-			return m, tea.Sequence(
-				tea.WindowSize(),
-				func() tea.Msg {
-					m.menu.SetState(ui.StateDefault)
-					return nil
-				},
-			)
-		}
-		return m, nil
-	}
-
 	// Handle worktree selection state
 	if m.state == stateSelectWorktree {
 		shouldClose := m.selectionOverlay.HandleKeyPress(msg)
@@ -728,6 +699,11 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			// If focus was released (Esc), save state
 			if !m.contentPane.HasFocus() {
 				m.saveContentPaneState()
+			}
+			// Check if a new schedule was submitted via the inline form
+			sp := m.contentPane.SchedulePane()
+			if sp.HasPendingCreate() {
+				return m, m.handleScheduleCreate()
 			}
 			return m, nil
 		}
@@ -836,10 +812,9 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			if err != nil {
 				cwd = "."
 			}
-			m.scheduleOverlay = overlay.NewScheduleOverlay(cwd)
-			m.state = stateSchedule
-			m.menu.SetState(ui.StateSchedule)
-			return m, tea.WindowSize()
+			m.contentPane.SchedulePane().EnterCreateMode(cwd)
+			m.contentPane.SetMode(ui.ContentModeSchedules)
+			return m, m.selectionChanged()
 		}
 
 		if m.sidebar.NumInstances() >= GlobalInstanceLimit {
@@ -865,10 +840,10 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		if err != nil {
 			cwd = "."
 		}
-		m.scheduleOverlay = overlay.NewScheduleOverlay(cwd)
-		m.state = stateSchedule
-		m.menu.SetState(ui.StateSchedule)
-		return m, tea.WindowSize()
+		m.contentPane.SchedulePane().EnterCreateMode(cwd)
+		m.navigateToSection(ui.SectionSchedules)
+		m.contentPane.SetMode(ui.ContentModeSchedules)
+		return m, m.selectionChanged()
 
 	case keys.KeyScheduleList:
 		// Navigate to schedules section in sidebar
@@ -1212,11 +1187,6 @@ func (m *home) View() string {
 			log.ErrorLog.Printf("text overlay is nil")
 		}
 		return overlay.PlaceOverlay(0, 0, m.textOverlay.Render(), mainView, true)
-	} else if m.state == stateSchedule {
-		if m.scheduleOverlay == nil {
-			log.ErrorLog.Printf("schedule overlay is nil")
-		}
-		return overlay.PlaceOverlay(0, 0, m.scheduleOverlay.Render(), mainView, true)
 	} else if m.state == stateConfirm {
 		if m.confirmationOverlay == nil {
 			log.ErrorLog.Printf("confirmation overlay is nil")

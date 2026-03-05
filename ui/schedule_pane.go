@@ -23,6 +23,11 @@ type SchedulePane struct {
 	editPath   textinput.Model
 	focusIndex int // 0=prompt, 1=cron, 2=path, 3=save button
 
+	// Create mode
+	creating       bool
+	createPath     string
+	pendingCreate  bool
+
 	width, height int
 	dirty         bool
 	deleted       []schedule.Schedule
@@ -76,6 +81,7 @@ func (s *SchedulePane) SetFocus(focus bool) {
 	s.hasFocus = focus
 	if !focus {
 		s.editing = false
+		s.creating = false
 	}
 }
 
@@ -84,12 +90,59 @@ func (s *SchedulePane) IsEditing() bool {
 	return s.editing
 }
 
+// IsCreating returns true if in create mode.
+func (s *SchedulePane) IsCreating() bool {
+	return s.creating
+}
+
+// EnterCreateMode initializes empty edit fields for creating a new schedule.
+func (s *SchedulePane) EnterCreateMode(defaultPath string) {
+	s.createPath = defaultPath
+
+	prompt := textarea.New()
+	prompt.ShowLineNumbers = false
+	prompt.Prompt = ""
+	prompt.Focus()
+	prompt.FocusedStyle.CursorLine = lipgloss.NewStyle()
+	prompt.CharLimit = 0
+	prompt.MaxHeight = 0
+	prompt.Placeholder = "Enter task prompt..."
+
+	cron := textinput.New()
+	cron.Placeholder = "0 9 * * 1-5"
+	cron.CharLimit = 64
+	cron.Blur()
+
+	path := textinput.New()
+	path.SetValue(defaultPath)
+	path.CharLimit = 256
+	path.Blur()
+
+	s.editPrompt = prompt
+	s.editCron = cron
+	s.editPath = path
+	s.focusIndex = 0
+	s.creating = true
+	s.hasFocus = true
+}
+
+// HasPendingCreate returns true if a new schedule was submitted and needs saving.
+func (s *SchedulePane) HasPendingCreate() bool {
+	return s.pendingCreate
+}
+
+// ConsumePendingCreate returns the submitted create data and clears the pending flag.
+func (s *SchedulePane) ConsumePendingCreate() (prompt, cron, path string) {
+	s.pendingCreate = false
+	return s.editPrompt.Value(), s.editCron.Value(), s.editPath.Value()
+}
+
 // HandleKeyPress processes a key press. Returns true if consumed.
 func (s *SchedulePane) HandleKeyPress(msg tea.KeyMsg) bool {
 	if !s.hasFocus {
 		return false
 	}
-	if s.editing {
+	if s.editing || s.creating {
 		return s.handleEditMode(msg)
 	}
 	return s.handleNormalMode(msg)
@@ -131,6 +184,9 @@ func (s *SchedulePane) handleNormalMode(msg tea.KeyMsg) bool {
 		if len(s.schedules) > 0 {
 			s.enterEditMode()
 		}
+		return true
+	case "n":
+		s.EnterCreateMode(s.createPath)
 		return true
 	}
 	return true
@@ -175,13 +231,19 @@ func (s *SchedulePane) handleEditMode(msg tea.KeyMsg) bool {
 		s.updateEditFocus()
 	case tea.KeyEsc:
 		s.editing = false
+		s.creating = false
 	case tea.KeyEnter:
 		if s.focusIndex == 3 {
-			s.schedules[s.selectedIdx].Prompt = s.editPrompt.Value()
-			s.schedules[s.selectedIdx].CronExpr = s.editCron.Value()
-			s.schedules[s.selectedIdx].ProjectPath = s.editPath.Value()
-			s.dirty = true
-			s.editing = false
+			if s.creating {
+				s.pendingCreate = true
+				s.creating = false
+			} else {
+				s.schedules[s.selectedIdx].Prompt = s.editPrompt.Value()
+				s.schedules[s.selectedIdx].CronExpr = s.editCron.Value()
+				s.schedules[s.selectedIdx].ProjectPath = s.editPath.Value()
+				s.dirty = true
+				s.editing = false
+			}
 			return true
 		}
 		if s.focusIndex == 0 {
@@ -222,7 +284,7 @@ func (s *SchedulePane) updateEditFocus() {
 
 // String renders the schedule pane.
 func (s *SchedulePane) String() string {
-	if s.editing {
+	if s.editing || s.creating {
 		return s.renderEditMode()
 	}
 	return s.renderListMode()
@@ -299,7 +361,7 @@ func (s *SchedulePane) renderListMode() string {
 
 	b.WriteString("\n")
 	if s.hasFocus {
-		b.WriteString(hintStyle.Render("enter edit • x toggle • D delete • esc back"))
+		b.WriteString(hintStyle.Render("n new • enter edit • x toggle • D delete • esc back"))
 	} else {
 		b.WriteString(hintStyle.Render("enter to focus and edit schedules"))
 	}
@@ -331,10 +393,13 @@ func (s *SchedulePane) renderEditMode() string {
 	s.editCron.Width = inputWidth
 	s.editPath.Width = inputWidth
 
-	sched := s.schedules[s.selectedIdx]
-
 	var b strings.Builder
-	b.WriteString(editTitleStyle.Render(fmt.Sprintf("Edit Schedule %s", sched.ID)))
+	if s.creating {
+		b.WriteString(editTitleStyle.Render("New Schedule"))
+	} else {
+		sched := s.schedules[s.selectedIdx]
+		b.WriteString(editTitleStyle.Render(fmt.Sprintf("Edit Schedule %s", sched.ID)))
+	}
 	b.WriteString("\n")
 	b.WriteString(labelStyle.Render("Prompt:"))
 	b.WriteString("\n")
@@ -349,11 +414,14 @@ func (s *SchedulePane) renderEditMode() string {
 	b.WriteString(s.editPath.View())
 	b.WriteString("\n\n")
 
-	submitButton := " Save "
+	submitLabel := " Save "
+	if s.creating {
+		submitLabel = " Schedule "
+	}
 	if s.focusIndex == 3 {
-		b.WriteString("       " + focusedButtonStyle.Render(submitButton))
+		b.WriteString("       " + focusedButtonStyle.Render(submitLabel))
 	} else {
-		b.WriteString("       " + buttonStyle.Render(submitButton))
+		b.WriteString("       " + buttonStyle.Render(submitLabel))
 	}
 
 	return b.String()
