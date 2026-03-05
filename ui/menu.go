@@ -183,7 +183,7 @@ func (m *Menu) String() string {
 		end   int
 	}{
 		{0, 2}, // Instance management group (n, d)
-		{2, 5}, // Action group (enter, submit, pause/resume)
+		{2, 5}, // Action group (enter, scroll)
 		{6, 8}, // System group (tab, help, q)
 	}
 

@@ -158,30 +158,6 @@ func (s *Storage) DeleteInstance(title string) error {
 	return s.SaveInstances(newInstances)
 }
 
-// UpdateInstance updates an existing instance in storage
-func (s *Storage) UpdateInstance(instance *Instance) error {
-	instances, err := s.LoadInstances()
-	if err != nil {
-		return fmt.Errorf("failed to load instances: %w", err)
-	}
-
-	data := instance.ToInstanceData()
-	found := false
-	for i, existing := range instances {
-		existingData := existing.ToInstanceData()
-		if existingData.Title == data.Title {
-			instances[i] = instance
-			found = true
-			break
-		}
-	}
-
-	if !found {
-		return fmt.Errorf("instance not found: %s", data.Title)
-	}
-
-	return s.SaveInstances(instances)
-}
 
 // mergeWithDisk reads the current on-disk instances and merges them with the
 // in-memory set. Instances known to the TUI (by title) are replaced with the

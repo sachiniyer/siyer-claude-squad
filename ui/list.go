@@ -13,7 +13,6 @@ import (
 )
 
 const readyIcon = "● "
-const pausedIcon = "⏸ "
 
 var readyStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.AdaptiveColor{Light: "#51bd73", Dark: "#51bd73"})
@@ -23,9 +22,6 @@ var addedLinesStyle = lipgloss.NewStyle().
 
 var removedLinesStyle = lipgloss.NewStyle().
 	Foreground(lipgloss.Color("#de613e"))
-
-var pausedStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#888888", Dark: "#888888"})
 
 var titleStyle = lipgloss.NewStyle().
 	Padding(1, 1, 0, 1).
@@ -85,7 +81,7 @@ func (l *List) SetSize(width, height int) {
 // width and height.
 func (l *List) SetSessionPreviewSize(width, height int) (err error) {
 	for i, item := range l.items {
-		if !item.Started() || item.Paused() {
+		if !item.Started() {
 			continue
 		}
 
@@ -133,8 +129,6 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 		join = fmt.Sprintf("%s ", r.spinner.View())
 	case session.Ready:
 		join = readyStyle.Render(readyIcon)
-	case session.Paused:
-		join = pausedStyle.Render(pausedIcon)
 	default:
 	}
 

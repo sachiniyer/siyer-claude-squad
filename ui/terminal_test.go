@@ -168,23 +168,20 @@ func TestTerminalFallbackStates(t *testing.T) {
 		tp.mu.Unlock()
 	})
 
-	t.Run("paused instance", func(t *testing.T) {
-		// Create an instance without starting it, then set status to Paused.
-		// UpdateContent checks Paused status before Started(), so no need to start.
+	t.Run("not started instance", func(t *testing.T) {
 		instance, err := session.NewInstance(session.InstanceOptions{
-			Title:   "paused-inst",
+			Title:   "not-started-inst",
 			Path:    t.TempDir(),
 			Program: "bash",
 		})
 		require.NoError(t, err)
-		instance.SetStatus(session.Paused)
 
 		err = tp.UpdateContent(instance)
 		require.NoError(t, err)
 
 		tp.mu.Lock()
-		require.True(t, tp.fallback, "should be in fallback mode for paused instance")
-		require.Contains(t, tp.fallbackText, "paused", "fallback text should mention paused")
+		require.True(t, tp.fallback, "should be in fallback mode for not started instance")
+		require.Contains(t, tp.fallbackText, "not started", "fallback text should mention not started")
 		tp.mu.Unlock()
 	})
 

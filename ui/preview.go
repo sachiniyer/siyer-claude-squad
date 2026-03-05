@@ -2,7 +2,6 @@ package ui
 
 import (
 	"claude-squad/session"
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"
@@ -57,21 +56,6 @@ func (p *PreviewPane) UpdateContent(instance *session.Instance) error {
 		return nil
 	case instance.Status == session.Loading:
 		p.setFallbackState("Setting up workspace...")
-		return nil
-	case instance.Status == session.Paused:
-		p.setFallbackState(lipgloss.JoinVertical(lipgloss.Center,
-			"Session is paused. Press 'r' to resume.",
-			"",
-			lipgloss.NewStyle().
-				Foreground(lipgloss.AdaptiveColor{
-					Light: "#FFD700",
-					Dark:  "#FFD700",
-				}).
-				Render(fmt.Sprintf(
-					"The instance can be checked out at '%s' (copied to your clipboard)",
-					instance.Branch,
-				)),
-		))
 		return nil
 	}
 
@@ -184,7 +168,7 @@ func (p *PreviewPane) String() string {
 
 // ScrollUp scrolls up in the viewport
 func (p *PreviewPane) ScrollUp(instance *session.Instance) error {
-	if instance == nil || instance.Status == session.Paused {
+	if instance == nil {
 		return nil
 	}
 
@@ -217,7 +201,7 @@ func (p *PreviewPane) ScrollUp(instance *session.Instance) error {
 
 // ScrollDown scrolls down in the viewport
 func (p *PreviewPane) ScrollDown(instance *session.Instance) error {
-	if instance == nil || instance.Status == session.Paused {
+	if instance == nil {
 		return nil
 	}
 
@@ -250,7 +234,7 @@ func (p *PreviewPane) ScrollDown(instance *session.Instance) error {
 
 // ResetToNormalMode exits scroll mode and returns to normal mode
 func (p *PreviewPane) ResetToNormalMode(instance *session.Instance) error {
-	if instance == nil || instance.Status == session.Paused {
+	if instance == nil {
 		return nil
 	}
 

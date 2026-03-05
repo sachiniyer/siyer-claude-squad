@@ -101,7 +101,7 @@ func (s *Sidebar) SetSize(width, height int) {
 func (s *Sidebar) SetSessionPreviewSize(width, height int) error {
 	var err error
 	for i, item := range s.instances {
-		if !item.Started() || item.Paused() {
+		if !item.Started() {
 			continue
 		}
 		if innerErr := item.SetPreviewSize(width, height); innerErr != nil {

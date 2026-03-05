@@ -380,100 +380,6 @@ var sessionsKillCmd = &cobra.Command{
 	},
 }
 
-var pushMessageFlag string
-
-var sessionsPushCmd = &cobra.Command{
-	Use:   "push <title>",
-	Short: "Push session changes to remote",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		instance, _, err := findLiveInstanceByTitle(args[0])
-		if err != nil {
-			return jsonError(err)
-		}
-
-		wt, err := instance.GetGitWorktree()
-		if err != nil {
-			return jsonError(fmt.Errorf("failed to get worktree: %w", err))
-		}
-
-		msg := pushMessageFlag
-		if msg == "" {
-			msg = fmt.Sprintf("[claudesquad] push from '%s'", args[0])
-		}
-
-		if err := wt.PushChanges(msg, true); err != nil {
-			return jsonError(fmt.Errorf("failed to push changes: %w", err))
-		}
-		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
-var sessionsPauseCmd = &cobra.Command{
-	Use:   "pause <title>",
-	Short: "Pause a session",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		instance, repoID, err := findLiveInstanceByTitle(args[0])
-		if err != nil {
-			return jsonError(err)
-		}
-
-		if err := instance.Pause(); err != nil {
-			return jsonError(fmt.Errorf("failed to pause instance: %w", err))
-		}
-
-		// Save updated state
-		state := config.LoadState()
-		storage, err := session.NewStorage(state, repoID)
-		if err != nil {
-			return jsonError(err)
-		}
-		if err := storage.UpdateInstance(instance); err != nil {
-			return jsonError(fmt.Errorf("failed to save instance: %w", err))
-		}
-
-		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
-var sessionsResumeCmd = &cobra.Command{
-	Use:   "resume <title>",
-	Short: "Resume a paused session",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		instance, repoID, err := findLiveInstanceByTitle(args[0])
-		if err != nil {
-			return jsonError(err)
-		}
-
-		if err := instance.Resume(); err != nil {
-			return jsonError(fmt.Errorf("failed to resume instance: %w", err))
-		}
-
-		// Save updated state
-		state := config.LoadState()
-		storage, err := session.NewStorage(state, repoID)
-		if err != nil {
-			return jsonError(err)
-		}
-		if err := storage.UpdateInstance(instance); err != nil {
-			return jsonError(fmt.Errorf("failed to save instance: %w", err))
-		}
-
-		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
 // ---- Schedules subcommands ----
 
 var schedulesCmd = &cobra.Command{
@@ -694,8 +600,6 @@ func init() {
 	sessionsCreateCmd.Flags().StringVar(&createProgramFlag, "program", "", "Program to run (defaults to config default)")
 	sessionsCreateCmd.MarkFlagRequired("name")
 
-	sessionsPushCmd.Flags().StringVar(&pushMessageFlag, "message", "", "Commit message for push")
-
 	sessionsCmd.AddCommand(sessionsListCmd)
 	sessionsCmd.AddCommand(sessionsGetCmd)
 	sessionsCmd.AddCommand(sessionsCreateCmd)
@@ -703,9 +607,6 @@ func init() {
 	sessionsCmd.AddCommand(sessionsPreviewCmd)
 	sessionsCmd.AddCommand(sessionsDiffCmd)
 	sessionsCmd.AddCommand(sessionsKillCmd)
-	sessionsCmd.AddCommand(sessionsPushCmd)
-	sessionsCmd.AddCommand(sessionsPauseCmd)
-	sessionsCmd.AddCommand(sessionsResumeCmd)
 
 	// Schedules
 	schedulesAddCmd.Flags().StringVar(&schedAddPromptFlag, "prompt", "", "Prompt to send (required)")

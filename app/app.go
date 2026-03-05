@@ -326,7 +326,7 @@ func (m *home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m, nil
 	case tickUpdateMetadataMessage:
 		for _, instance := range m.sidebar.GetInstances() {
-			if !instance.Started() || instance.Paused() {
+			if !instance.Started() {
 				continue
 			}
 			instance.CheckAndHandleTrustPrompt()
@@ -349,7 +349,7 @@ func (m *home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		if msg.Action == tea.MouseActionPress {
 			if msg.Button == tea.MouseButtonWheelDown || msg.Button == tea.MouseButtonWheelUp {
 				selected := m.sidebar.GetSelectedInstance()
-				if selected == nil || selected.Status == session.Paused {
+				if selected == nil {
 					return m, nil
 				}
 				switch msg.Button {
@@ -475,9 +475,6 @@ func (m *home) handleMenuHighlighting(msg tea.KeyMsg) (cmd tea.Cmd, returnEarly 
 		return nil, false
 	}
 
-	if m.sidebar.GetSelectedInstance() != nil && m.sidebar.GetSelectedInstance().Paused() && name == keys.KeyEnter {
-		return nil, false
-	}
 	if name == keys.KeyShiftDown || name == keys.KeyShiftUp {
 		return nil, false
 	}
@@ -965,13 +962,6 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		}
 
 		killAction := func() tea.Msg {
-			worktree, err := selected.GetGitWorktree()
-			if err == nil && !worktree.IsExternalWorktree() {
-				checkedOut, checkErr := worktree.IsBranchCheckedOut()
-				if checkErr == nil && checkedOut {
-					return fmt.Errorf("instance %s is currently checked out", selected.Title)
-				}
-			}
 			tw.CleanupTerminalForInstance(selected.Title)
 			m.sidebar.Kill()
 			if err := m.storage.DeleteInstance(selected.Title); err != nil {
@@ -993,7 +983,7 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		// Instance selected
 		if sel.Kind == ui.SectionInstances {
 			selected := m.sidebar.GetSelectedInstance()
-			if selected == nil || selected.Paused() || selected.Status == session.Loading || !selected.TmuxAlive() {
+			if selected == nil || selected.Status == session.Loading || !selected.TmuxAlive() {
 				return m, nil
 			}
 			if tw.IsInTerminalTab() {
