@@ -69,8 +69,13 @@ func (s *Storage) SaveInstances(instances []*Instance) error {
 	}
 
 	if s.repoID != "" {
-		// TUI mode: save all to current repo's file
-		jsonData, err := json.Marshal(data)
+		// TUI mode: merge with on-disk state to preserve externally-created sessions
+		// (e.g. sessions created by `cs api sessions create` while the TUI was running)
+		merged, err := s.mergeWithDisk(data)
+		if err != nil {
+			return fmt.Errorf("failed to merge instances: %w", err)
+		}
+		jsonData, err := json.Marshal(merged)
 		if err != nil {
 			return fmt.Errorf("failed to marshal instances: %w", err)
 		}
@@ -176,6 +181,40 @@ func (s *Storage) UpdateInstance(instance *Instance) error {
 	}
 
 	return s.SaveInstances(instances)
+}
+
+// mergeWithDisk reads the current on-disk instances and merges them with the
+// in-memory set. Instances known to the TUI (by title) are replaced with the
+// in-memory version. Instances that only exist on disk (created externally)
+// are preserved.
+func (s *Storage) mergeWithDisk(memoryData []InstanceData) ([]InstanceData, error) {
+	raw := s.state.GetInstances(s.repoID)
+	if raw == nil || string(raw) == "[]" || string(raw) == "null" {
+		return memoryData, nil
+	}
+
+	var diskData []InstanceData
+	if err := json.Unmarshal(raw, &diskData); err != nil {
+		// Can't parse disk data, just use memory
+		return memoryData, nil
+	}
+
+	// Build a set of titles the TUI knows about
+	knownTitles := make(map[string]bool, len(memoryData))
+	for _, d := range memoryData {
+		knownTitles[d.Title] = true
+	}
+
+	// Keep disk-only instances (ones the TUI doesn't know about)
+	merged := make([]InstanceData, 0, len(memoryData)+len(diskData))
+	merged = append(merged, memoryData...)
+	for _, d := range diskData {
+		if !knownTitles[d.Title] {
+			merged = append(merged, d)
+		}
+	}
+
+	return merged, nil
 }
 
 // DeleteAllInstances removes all stored instances
