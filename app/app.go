@@ -136,7 +136,7 @@ func newHome(ctx context.Context, program string, autoYes bool, repoID string) *
 		mcPane = ui.NewMicroClawPane(mcBridge)
 	}
 
-	tabbedWindow := ui.NewTabbedWindow(ui.NewPreviewPane(), ui.NewDiffPane(), ui.NewTerminalPane(), mcPane)
+	tabbedWindow := ui.NewTabbedWindow(ui.NewPreviewPane(), ui.NewDiffPane(), ui.NewTerminalPane())
 
 	h := &home{
 		ctx:             ctx,
@@ -396,6 +396,13 @@ func (m *home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, nil
 }
 
+func (m *home) cleanupMicroClaw() {
+	mc := m.contentPane.MicroClawPane()
+	if mc != nil {
+		mc.Close()
+	}
+}
+
 func (m *home) handleQuit() (tea.Model, tea.Cmd) {
 	// Save any dirty task/schedule state
 	m.saveContentPaneState()
@@ -405,7 +412,7 @@ func (m *home) handleQuit() (tea.Model, tea.Cmd) {
 	}
 	tw := m.contentPane.TabbedWindow()
 	tw.CleanupTerminal()
-	tw.CleanupMicroClaw()
+	m.cleanupMicroClaw()
 	return m, tea.Quit
 }
 
@@ -725,10 +732,6 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 				tw.ResetTerminalToNormalMode()
 				return m, m.selectionChanged()
 			}
-			if tw.IsInMicroClawTab() && tw.IsMicroClawInScrollMode() {
-				tw.ResetMicroClawToNormalMode()
-				return m, m.selectionChanged()
-			}
 		}
 		if m.contentPane.GetMode() == ui.ContentModeMicroClaw {
 			mc := m.contentPane.MicroClawPane()
@@ -966,18 +969,6 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 					ch, err := tw.AttachTerminal()
 					if err != nil {
 						log.ErrorLog.Printf("failed to attach terminal: %v", err)
-						return
-					}
-					<-ch
-					m.state = stateDefault
-				})
-				return m, nil
-			}
-			if tw.IsInMicroClawTab() {
-				m.showHelpScreen(helpTypeInstanceAttach{}, func() {
-					ch, err := tw.AttachMicroClaw()
-					if err != nil {
-						log.ErrorLog.Printf("failed to attach microclaw: %v", err)
 						return
 					}
 					<-ch

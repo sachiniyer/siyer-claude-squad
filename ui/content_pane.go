@@ -180,8 +180,6 @@ func (c *ContentPane) UpdateMicroClaw() {
 	if c.mode == ContentModeMicroClaw && c.microclaw != nil {
 		c.microclaw.Refresh()
 	}
-	// Also update if it's still in the tabbed window
-	c.tabbedWindow.UpdateMicroClaw()
 }
 
 // String renders the content pane.

@@ -3,7 +3,6 @@ package ui
 import (
 	"claude-squad/log"
 	"claude-squad/session"
-	"fmt"
 
 	"github.com/charmbracelet/lipgloss"
 )
@@ -36,7 +35,6 @@ const (
 	PreviewTab int = iota
 	DiffTab
 	TerminalTab
-	MicroClawTab // Deprecated: MicroClaw is now rendered by ContentPane directly
 )
 
 // TabbedWindow has tabs at the top of a pane which can be selected. The tabs
@@ -48,24 +46,18 @@ type TabbedWindow struct {
 	height    int
 	width     int
 
-	preview   *PreviewPane
-	diff      *DiffPane
-	terminal  *TerminalPane
-	microclaw *MicroClawPane
-	instance  *session.Instance
+	preview  *PreviewPane
+	diff     *DiffPane
+	terminal *TerminalPane
+	instance *session.Instance
 }
 
-func NewTabbedWindow(preview *PreviewPane, diff *DiffPane, terminal *TerminalPane, microclaw *MicroClawPane) *TabbedWindow {
-	tabs := []string{"Preview", "Diff", "Terminal"}
-	if microclaw != nil {
-		tabs = append(tabs, "MicroClaw")
-	}
+func NewTabbedWindow(preview *PreviewPane, diff *DiffPane, terminal *TerminalPane) *TabbedWindow {
 	return &TabbedWindow{
-		tabs:      tabs,
-		preview:   preview,
-		diff:      diff,
-		terminal:  terminal,
-		microclaw: microclaw,
+		tabs:     []string{"Preview", "Diff", "Terminal"},
+		preview:  preview,
+		diff:     diff,
+		terminal: terminal,
 	}
 }
 
@@ -93,9 +85,6 @@ func (w *TabbedWindow) SetSize(width, height int) {
 	w.preview.SetSize(contentWidth, contentHeight)
 	w.diff.SetSize(contentWidth, contentHeight)
 	w.terminal.SetSize(contentWidth, contentHeight)
-	if w.microclaw != nil {
-		w.microclaw.SetSize(contentWidth, contentHeight)
-	}
 }
 
 func (w *TabbedWindow) GetPreviewSize() (width, height int) {
@@ -152,10 +141,6 @@ func (w *TabbedWindow) ScrollUp() {
 		if err := w.terminal.ScrollUp(); err != nil {
 			log.InfoLog.Printf("tabbed window failed to scroll terminal up: %v", err)
 		}
-	case MicroClawTab:
-		if w.microclaw != nil {
-			w.microclaw.ScrollUp()
-		}
 	}
 }
 
@@ -171,10 +156,6 @@ func (w *TabbedWindow) ScrollDown() {
 	case TerminalTab:
 		if err := w.terminal.ScrollDown(); err != nil {
 			log.InfoLog.Printf("tabbed window failed to scroll terminal down: %v", err)
-		}
-	case MicroClawTab:
-		if w.microclaw != nil {
-			w.microclaw.ScrollDown()
 		}
 	}
 }
@@ -192,49 +173,6 @@ func (w *TabbedWindow) IsInDiffTab() bool {
 // IsInTerminalTab returns true if the terminal tab is currently active
 func (w *TabbedWindow) IsInTerminalTab() bool {
 	return w.activeTab == TerminalTab
-}
-
-// IsInMicroClawTab returns true if the microclaw tab is currently active
-func (w *TabbedWindow) IsInMicroClawTab() bool {
-	return w.activeTab == MicroClawTab
-}
-
-// UpdateMicroClaw refreshes the microclaw pane content. Only updates when the tab is active.
-func (w *TabbedWindow) UpdateMicroClaw() {
-	if w.activeTab != MicroClawTab || w.microclaw == nil {
-		return
-	}
-	w.microclaw.Refresh()
-}
-
-// AttachMicroClaw attaches to the microclaw tmux session
-func (w *TabbedWindow) AttachMicroClaw() (chan struct{}, error) {
-	if w.microclaw == nil {
-		return nil, fmt.Errorf("microclaw pane not available")
-	}
-	return w.microclaw.Attach()
-}
-
-// CleanupMicroClaw closes the microclaw tmux session
-func (w *TabbedWindow) CleanupMicroClaw() {
-	if w.microclaw != nil {
-		w.microclaw.Close()
-	}
-}
-
-// IsMicroClawInScrollMode returns true if the microclaw pane is in scroll mode
-func (w *TabbedWindow) IsMicroClawInScrollMode() bool {
-	if w.microclaw == nil {
-		return false
-	}
-	return w.microclaw.IsScrolling()
-}
-
-// ResetMicroClawToNormalMode exits scroll mode on the microclaw pane
-func (w *TabbedWindow) ResetMicroClawToNormalMode() {
-	if w.microclaw != nil {
-		w.microclaw.ResetToNormalMode()
-	}
 }
 
 // GetActiveTab returns the currently active tab index
@@ -321,10 +259,6 @@ func (w *TabbedWindow) String() string {
 		content = w.diff.String()
 	case TerminalTab:
 		content = w.terminal.String()
-	case MicroClawTab:
-		if w.microclaw != nil {
-			content = w.microclaw.String()
-		}
 	}
 	window := windowStyle.Render(
 		lipgloss.Place(
