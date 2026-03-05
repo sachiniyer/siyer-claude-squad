@@ -155,7 +155,9 @@ func (t *TerminalPane) ensureSessionLocked(instance *session.Instance) error {
 	if ts.DoesSessionExist() {
 		if err := ts.Restore(); err != nil {
 			// Session exists but can't restore, kill it and start fresh
-			_ = ts.Close()
+			if closeErr := ts.Close(); closeErr != nil {
+				log.ErrorLog.Printf("terminal pane: failed to close stale session %s: %v", termName, closeErr)
+			}
 			ts = tmux.NewTmuxSession(termName, shell)
 			if err := ts.Start(worktreePath); err != nil {
 				return fmt.Errorf("terminal pane: failed to start session: %w", err)

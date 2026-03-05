@@ -90,16 +90,13 @@ var (
 			log.Initialize(false)
 			defer log.Close()
 
-			state := config.LoadState()
-			storage, err := session.NewStorage(state, "")
-			if err != nil {
-				return fmt.Errorf("failed to initialize storage: %w", err)
+			// Kill any daemon that's running first.
+			if err := daemon.StopDaemon(); err != nil {
+				return err
 			}
-			if err := storage.DeleteAllInstances(); err != nil {
-				return fmt.Errorf("failed to reset storage: %w", err)
-			}
-			fmt.Println("Storage has been reset successfully")
+			fmt.Println("daemon has been stopped")
 
+			// Clean up resources before deleting storage records
 			if err := tmux.CleanupSessions(cmd2.MakeExecutor()); err != nil {
 				return fmt.Errorf("failed to cleanup tmux sessions: %w", err)
 			}
@@ -110,11 +107,16 @@ var (
 			}
 			fmt.Println("Worktrees have been cleaned up")
 
-			// Kill any daemon that's running.
-			if err := daemon.StopDaemon(); err != nil {
-				return err
+			// Delete storage last, after resources are cleaned up
+			state := config.LoadState()
+			storage, err := session.NewStorage(state, "")
+			if err != nil {
+				return fmt.Errorf("failed to initialize storage: %w", err)
 			}
-			fmt.Println("daemon has been stopped")
+			if err := storage.DeleteAllInstances(); err != nil {
+				return fmt.Errorf("failed to reset storage: %w", err)
+			}
+			fmt.Println("Storage has been reset successfully")
 
 			return nil
 		},

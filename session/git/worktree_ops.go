@@ -194,7 +194,9 @@ func CleanupWorktrees() error {
 			}
 
 			// Remove the worktree directory
-			os.RemoveAll(wt.path)
+			if err := os.RemoveAll(wt.path); err != nil {
+				log.ErrorLog.Printf("failed to remove worktree directory %s: %v", wt.path, err)
+			}
 		}
 	}
 

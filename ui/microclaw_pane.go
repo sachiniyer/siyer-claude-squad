@@ -120,7 +120,9 @@ func (p *MicroClawPane) ensureSessionLocked() error {
 	// Check if session already exists (e.g. from a previous run)
 	if ts.DoesSessionExist() {
 		if err := ts.Restore(); err != nil {
-			_ = ts.Close()
+			if closeErr := ts.Close(); closeErr != nil {
+				log.ErrorLog.Printf("microclaw pane: failed to close stale session: %v", closeErr)
+			}
 			ts = tmux.NewTmuxSession("microclaw_tui", cmd)
 			if err := ts.Start("."); err != nil {
 				return fmt.Errorf("failed to start microclaw session: %w", err)
@@ -165,8 +167,10 @@ func (p *MicroClawPane) Close() {
 	defer p.mu.Unlock()
 	if p.tmuxSession != nil {
 		if err := p.tmuxSession.Close(); err != nil {
-			log.InfoLog.Printf("microclaw pane: failed to close session: %v", err)
+			log.ErrorLog.Printf("microclaw pane: failed to close session: %v", err)
 		}
+		// Always nil out: even if Close() failed, we don't want to try again
+		// with a potentially corrupted session reference.
 		p.tmuxSession = nil
 	}
 	p.content = ""
