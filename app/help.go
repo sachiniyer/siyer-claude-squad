@@ -56,6 +56,7 @@ func (h helpTypeGeneral) toContent() string {
 		"",
 		headerStyle.Render("Other:"),
 		keyStyle.Render("tab")+descStyle.Render("       - Switch between preview, diff, and terminal tabs"),
+		keyStyle.Render("shift+tab")+descStyle.Render(" - Switch tabs in reverse"),
 		keyStyle.Render("shift-↓/↑")+descStyle.Render(" - Scroll in preview/diff/terminal view"),
 		keyStyle.Render("q")+descStyle.Render("         - Quit the application"),
 	)

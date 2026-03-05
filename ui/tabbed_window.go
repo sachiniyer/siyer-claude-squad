@@ -106,6 +106,10 @@ func (w *TabbedWindow) Toggle() {
 	w.activeTab = (w.activeTab + 1) % len(w.tabs)
 }
 
+func (w *TabbedWindow) ToggleBack() {
+	w.activeTab = (w.activeTab - 1 + len(w.tabs)) % len(w.tabs)
+}
+
 // UpdatePreview updates the content of the preview pane. instance may be nil.
 func (w *TabbedWindow) UpdatePreview(instance *session.Instance) error {
 	if w.activeTab != PreviewTab {
