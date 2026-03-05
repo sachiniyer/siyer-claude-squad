@@ -7,8 +7,21 @@
 - [x] add ability to edit scheduled tasks from the list tasks pane
 - [x] extra confirmation for uncommitted/local only commit
 - [x] create a session without a worktree
-- [ ] adjust microclaw 
-- [ ] schedule messages against microclaw
+- [x] adjust microclaw 
 - [ ] add custom skills when in a claude squad session to explain how to create new sessions/worktrees through the api
 - [ ] hooks to install dependencies and make install/make build scripts
 - [ ] better graphite integration (link instances/sessions to open stacks instead of strictly worktrees maybe?)
+- [ ] fuzzy search across sessions (press `/` to open search, filter by title, branch, status)
+  - add a search overlay that filters the sidebar instance list in real time
+  - support status prefix filters: `!` (running), `@` (waiting), `#` (idle), `$` (error)
+  - use simple substring/fuzzy matching (no external dependency needed)
+- [ ] smart status detection — extend the 3-state model (Running/Ready/Loading) to 5 states
+  - Waiting: agent is at input prompt, needs user attention (detect `❯` prompt for Claude, `>` for Aider, `@` for Gemini)
+  - Error: agent hit an error (detect `Error:`, `SIGTERM`, crash patterns in pane content)
+  - Idle: content unchanged for extended period + no active prompt (distinguish from "Ready")
+  - infrastructure already exists in HasUpdated() — just add more pattern matching to pane content
+  - add distinct visual indicators per state (colors + icons in sidebar)
+- [ ] notifications — alert when sessions change state (finish, error, need input)
+  - terminal bell as minimum viable
+  - optional desktop notifications (libnotify on Linux, osascript on macOS)
+  - optional webhook/Slack support
