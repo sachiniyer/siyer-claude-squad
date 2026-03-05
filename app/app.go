@@ -950,8 +950,8 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 
 	case keys.KeyEnter:
 		sel := m.sidebar.GetSelection()
-		// Toggle section headers
-		if sel.IsHeader {
+		// Toggle expandable section headers (only Instances has children)
+		if sel.IsHeader && sel.Kind == ui.SectionInstances {
 			m.sidebar.ToggleSection()
 			return m, m.selectionChanged()
 		}
@@ -1071,7 +1071,7 @@ func (m *home) selectionChanged() tea.Cmd {
 		m.contentPane.SetMode(ui.ContentModeTodos)
 		m.menu.SetInstance(nil)
 		m.menu.SetSidebarContext(sel.Kind, sel.IsHeader)
-	case sel.Kind == ui.SectionSchedules && !sel.IsHeader:
+	case sel.Kind == ui.SectionSchedules:
 		m.contentPane.SetMode(ui.ContentModeSchedules)
 		m.menu.SetInstance(nil)
 		m.menu.SetSidebarContext(sel.Kind, sel.IsHeader)
@@ -1080,16 +1080,13 @@ func (m *home) selectionChanged() tea.Cmd {
 		m.menu.SetInstance(nil)
 		m.menu.SetSidebarContext(sel.Kind, sel.IsHeader)
 	default:
-		// On section headers (Instances, Schedules), show the instance preview if available
+		// On section headers, show the instance preview if available
 		if sel.Kind == ui.SectionInstances {
-			// On the Instances header, keep showing instance content if there's one selected
 			if m.sidebar.NumInstances() > 0 {
 				m.contentPane.SetMode(ui.ContentModeInstance)
 			} else {
 				m.contentPane.SetMode(ui.ContentModeEmpty)
 			}
-		} else if sel.Kind == ui.SectionSchedules {
-			m.contentPane.SetMode(ui.ContentModeSchedules)
 		} else {
 			m.contentPane.SetMode(ui.ContentModeEmpty)
 		}

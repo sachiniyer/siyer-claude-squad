@@ -45,13 +45,6 @@ var sectionHeaderSelectedStyle = lipgloss.NewStyle().
 	Background(lipgloss.Color("#dde4f0")).
 	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#1a1a1a"})
 
-var sidebarScheduleStyle = lipgloss.NewStyle().
-	Foreground(lipgloss.AdaptiveColor{Light: "#A49FA5", Dark: "#9C9494"})
-
-var sidebarScheduleSelectedStyle = lipgloss.NewStyle().
-	Bold(true).
-	Background(lipgloss.Color("#dde4f0")).
-	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#1a1a1a"})
 
 // Sidebar is the unified left navigation pane with collapsible sections.
 type Sidebar struct {
@@ -148,10 +141,6 @@ func (s *Sidebar) rebuildVisibleItems() {
 			case SectionInstances:
 				for i := range s.instances {
 					items = append(items, SidebarItem{Kind: SectionInstances, ItemIndex: i})
-				}
-			case SectionSchedules:
-				for i := range s.schedules {
-					items = append(items, SidebarItem{Kind: SectionSchedules, ItemIndex: i})
 				}
 			}
 		}
@@ -400,8 +389,6 @@ func (s *Sidebar) String() string {
 			switch item.Kind {
 			case SectionInstances:
 				b.WriteString(s.renderInstance(item.ItemIndex, isSelected))
-			case SectionSchedules:
-				b.WriteString(s.renderSchedule(item.ItemIndex, isSelected))
 			}
 		}
 		b.WriteString("\n")
@@ -430,6 +417,7 @@ func (s *Sidebar) renderHeader(kind SidebarSectionKind, selected bool) string {
 		label = fmt.Sprintf("Instances (%d)", len(s.instances))
 	case SectionSchedules:
 		label = fmt.Sprintf("Schedules (%d)", len(s.schedules))
+		arrow = "  " // no expand arrow for leaf sections
 	case SectionTodos:
 		if s.taskCount > 0 {
 			label = fmt.Sprintf("Todos (%d)", s.taskCount)
@@ -463,27 +451,3 @@ func (s *Sidebar) renderInstance(idx int, selected bool) string {
 	return s.renderer.Render(s.instances[idx], idx+1, selected, len(s.repos) > 1)
 }
 
-func (s *Sidebar) renderSchedule(idx int, selected bool) string {
-	if idx < 0 || idx >= len(s.schedules) {
-		return ""
-	}
-	sched := s.schedules[idx]
-	status := "[✓]"
-	if !sched.Enabled {
-		status = "[✗]"
-	}
-
-	prompt := sched.Prompt
-	w := AdjustPreviewWidth(s.width) - 20
-	if w > 0 && runewidth.StringWidth(prompt) > w {
-		prompt = runewidth.Truncate(prompt, w, "...")
-	}
-
-	text := fmt.Sprintf("  %s %s %s", status, sched.CronExpr, prompt)
-
-	style := sidebarScheduleStyle
-	if selected {
-		style = sidebarScheduleSelectedStyle
-	}
-	return style.Padding(0, 1).Render(text)
-}
