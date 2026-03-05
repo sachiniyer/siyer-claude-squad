@@ -2,6 +2,7 @@ package session
 
 import (
 	"claude-squad/config"
+	"claude-squad/log"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -124,7 +125,11 @@ func (s *Storage) LoadInstances() ([]*Instance, error) {
 		for _, data := range instancesData {
 			instance, err := FromInstanceData(data)
 			if err != nil {
-				return nil, fmt.Errorf("failed to create instance %s: %w", data.Title, err)
+				// Instance's tmux session or worktree may have been
+				// destroyed externally. Log and skip rather than
+				// failing the entire load.
+				log.WarningLog.Printf("skipping instance %q: %v", data.Title, err)
+				continue
 			}
 			instances = append(instances, instance)
 		}
