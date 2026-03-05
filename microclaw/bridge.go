@@ -312,7 +312,7 @@ func (b *Bridge) sendViaAPI(content string) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 	if b.csrfToken != "" {
-		req.Header.Set("X-CSRFToken", b.csrfToken)
+		req.Header.Set("X-CSRF-Token", b.csrfToken)
 	}
 
 	resp, err := b.httpClient.Do(req)
@@ -327,13 +327,13 @@ func (b *Bridge) sendViaAPI(content string) error {
 			return fmt.Errorf("re-auth failed: %w", err)
 		}
 		if b.csrfToken != "" {
-			req.Header.Set("X-CSRFToken", b.csrfToken)
+			req.Header.Set("X-CSRF-Token", b.csrfToken)
 		}
 		body, _ := json.Marshal(map[string]string{"message": content})
 		req, _ = http.NewRequest("POST", b.apiBaseURL+"/api/send_stream", bytes.NewReader(body))
 		req.Header.Set("Content-Type", "application/json")
 		if b.csrfToken != "" {
-			req.Header.Set("X-CSRFToken", b.csrfToken)
+			req.Header.Set("X-CSRF-Token", b.csrfToken)
 		}
 		resp, err = b.httpClient.Do(req)
 		if err != nil {
