@@ -86,6 +86,11 @@ func newTmuxSession(name string, program string, ptyFactory PtyFactory, cmdExec 
 	}
 }
 
+// SetProgram updates the program command before the session is started.
+func (t *TmuxSession) SetProgram(program string) {
+	t.program = program
+}
+
 // Start creates and starts a new tmux session, then attaches to it. Program is the command to run in
 // the session (ex. claude). workdir is the git worktree directory.
 func (t *TmuxSession) Start(workDir string) error {

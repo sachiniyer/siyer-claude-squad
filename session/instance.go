@@ -249,6 +249,13 @@ func (i *Instance) Start(firstTimeSetup bool) error {
 			return setupErr
 		}
 
+		// Inject Claude Squad instructions into the session. For CLI-based tools
+		// (Claude Code) this modifies the program command. For file-based tools
+		// (Codex, Amp, OpenCode) this writes an instruction file into the worktree.
+		i.tmuxSession.SetProgram(
+			injectSystemPrompt(i.Program, i.Title, i.gitWorktree.GetWorktreePath()),
+		)
+
 		// Create new session
 		if err := i.tmuxSession.Start(i.gitWorktree.GetWorktreePath()); err != nil {
 			// Cleanup git worktree if tmux session creation fails
@@ -279,7 +286,8 @@ func (i *Instance) StartWithExistingWorktree(worktreePath, branchName string) er
 	i.gitWorktree = gitWorktree
 	i.Branch = branchName
 
-	tmuxSession := tmux.NewTmuxSession(i.Title, i.Program)
+	program := injectSystemPrompt(i.Program, i.Title, worktreePath)
+	tmuxSession := tmux.NewTmuxSession(i.Title, program)
 	i.tmuxSession = tmuxSession
 
 	if err := tmuxSession.Start(worktreePath); err != nil {
