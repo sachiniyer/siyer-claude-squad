@@ -23,6 +23,15 @@ type InstanceData struct {
 	Program   string          `json:"program"`
 	Worktree  GitWorktreeData `json:"worktree"`
 	DiffStats DiffStatsData   `json:"diff_stats"`
+	PRInfo    PRInfoData      `json:"pr_info,omitempty"`
+}
+
+// PRInfoData represents the serializable data of a PRInfo
+type PRInfoData struct {
+	Number int    `json:"number,omitempty"`
+	Title  string `json:"title,omitempty"`
+	URL    string `json:"url,omitempty"`
+	State  string `json:"state,omitempty"`
 }
 
 // GitWorktreeData represents the serializable data of a GitWorktree

@@ -50,6 +50,9 @@ type Instance struct {
 	// DiffStats stores the current git diff statistics
 	diffStats *git.DiffStats
 
+	// prInfo stores the associated GitHub PR info
+	prInfo *git.PRInfo
+
 	// The below fields are initialized upon calling Start().
 
 	started bool
@@ -95,6 +98,16 @@ func (i *Instance) ToInstanceData() InstanceData {
 		}
 	}
 
+	// Only include PR info if it exists
+	if i.prInfo != nil {
+		data.PRInfo = PRInfoData{
+			Number: i.prInfo.Number,
+			Title:  i.prInfo.Title,
+			URL:    i.prInfo.URL,
+			State:  i.prInfo.State,
+		}
+	}
+
 	return data
 }
 
@@ -123,6 +136,15 @@ func FromInstanceData(data InstanceData) (*Instance, error) {
 			Removed: data.DiffStats.Removed,
 			Content: data.DiffStats.Content,
 		},
+	}
+
+	if data.PRInfo.Number != 0 {
+		instance.prInfo = &git.PRInfo{
+			Number: data.PRInfo.Number,
+			Title:  data.PRInfo.Title,
+			URL:    data.PRInfo.URL,
+			State:  data.PRInfo.State,
+		}
 	}
 
 	if err := instance.Start(false); err != nil {
@@ -426,6 +448,29 @@ func (i *Instance) UpdateDiffStats() error {
 // GetDiffStats returns the current git diff statistics
 func (i *Instance) GetDiffStats() *git.DiffStats {
 	return i.diffStats
+}
+
+// GetPRInfo returns the associated GitHub PR info, or nil if none.
+func (i *Instance) GetPRInfo() *git.PRInfo {
+	return i.prInfo
+}
+
+// SetPRInfo sets the associated GitHub PR info.
+func (i *Instance) SetPRInfo(info *git.PRInfo) {
+	i.prInfo = info
+}
+
+// UpdatePRInfo fetches the latest PR info from GitHub for this instance's branch.
+func (i *Instance) UpdatePRInfo() error {
+	if !i.started || i.gitWorktree == nil {
+		return nil
+	}
+	info, err := git.FetchPRInfo(i.gitWorktree.GetRepoPath(), i.Branch)
+	if err != nil {
+		return err
+	}
+	i.prInfo = info
+	return nil
 }
 
 // SendPrompt sends a prompt to the tmux session

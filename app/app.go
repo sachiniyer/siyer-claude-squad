@@ -15,7 +15,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"runtime"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -301,6 +304,7 @@ func (m *home) Init() tea.Cmd {
 			return previewTickMsg{}
 		},
 		tickUpdateMetadataCmd,
+		tickUpdatePRInfoCmd,
 	)
 }
 
@@ -321,6 +325,16 @@ func (m *home) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case keyupMsg:
 		m.menu.ClearKeydown()
 		return m, nil
+	case tickUpdatePRInfoMessage:
+		for _, instance := range m.sidebar.GetInstances() {
+			if !instance.Started() {
+				continue
+			}
+			if err := instance.UpdatePRInfo(); err != nil {
+				log.WarningLog.Printf("could not update PR info: %v", err)
+			}
+		}
+		return m, tickUpdatePRInfoCmd
 	case tickUpdateMetadataMessage:
 		for _, instance := range m.sidebar.GetInstances() {
 			if !instance.Started() {
@@ -1022,6 +1036,47 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		m.state = stateSelectWorktree
 		return m, nil
 
+	// PR actions
+	case keys.KeyOpenPR:
+		selected := m.sidebar.GetSelectedInstance()
+		if selected == nil || selected.GetPRInfo() == nil {
+			return m, nil
+		}
+		url := selected.GetPRInfo().URL
+		var openCmd *exec.Cmd
+		if runtime.GOOS == "darwin" {
+			openCmd = exec.Command("open", url)
+		} else {
+			openCmd = exec.Command("xdg-open", url)
+		}
+		if err := openCmd.Start(); err != nil {
+			return m, m.handleError(fmt.Errorf("failed to open PR: %w", err))
+		}
+		return m, nil
+
+	case keys.KeyCopyPR:
+		selected := m.sidebar.GetSelectedInstance()
+		if selected == nil || selected.GetPRInfo() == nil {
+			return m, nil
+		}
+		url := selected.GetPRInfo().URL
+		var copyCmd *exec.Cmd
+		switch runtime.GOOS {
+		case "darwin":
+			copyCmd = exec.Command("pbcopy")
+		default:
+			if _, err := exec.LookPath("wl-copy"); err == nil {
+				copyCmd = exec.Command("wl-copy")
+			} else {
+				copyCmd = exec.Command("xclip", "-selection", "clipboard")
+			}
+		}
+		copyCmd.Stdin = strings.NewReader(url)
+		if err := copyCmd.Run(); err != nil {
+			return m, m.handleError(fmt.Errorf("failed to copy PR URL: %w", err))
+		}
+		return m, nil
+
 	// Scrolling
 	case keys.KeyShiftUp:
 		m.contentPane.ScrollUp()
@@ -1218,6 +1273,7 @@ func (m *home) keydownCallback(name keys.KeyName) tea.Cmd {
 type hideErrMsg struct{}
 type previewTickMsg struct{}
 type tickUpdateMetadataMessage struct{}
+type tickUpdatePRInfoMessage struct{}
 type instanceChangedMsg struct{}
 
 type instanceStartedMsg struct {
@@ -1229,6 +1285,11 @@ type instanceStartedMsg struct {
 var tickUpdateMetadataCmd = func() tea.Msg {
 	time.Sleep(500 * time.Millisecond)
 	return tickUpdateMetadataMessage{}
+}
+
+var tickUpdatePRInfoCmd = func() tea.Msg {
+	time.Sleep(60 * time.Second)
+	return tickUpdatePRInfoMessage{}
 }
 
 func (m *home) handleError(err error) tea.Cmd {

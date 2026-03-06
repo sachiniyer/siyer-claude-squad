@@ -34,6 +34,9 @@ const (
 	KeySearch          // Key for searching sessions
 	KeyTriggerSchedule // Key for triggering a schedule immediately
 
+	KeyOpenPR // Key for opening PR in browser
+	KeyCopyPR // Key for copying PR URL to clipboard
+
 	// Sidebar navigation
 	KeyLeft        // Collapse section / move to parent
 	KeyRight       // Expand section
@@ -65,6 +68,8 @@ var GlobalKeyStringsMap = map[string]KeyName{
 	"m":          KeyMicroClaw,
 	"/":          KeySearch,
 	"r":          KeyTriggerSchedule,
+	"p":          KeyOpenPR,
+	"P":          KeyCopyPR,
 	"h":          KeyLeft,
 	"left":       KeyLeft,
 	"l":          KeyRight,
@@ -150,6 +155,14 @@ var GlobalKeyBindings = map[KeyName]key.Binding{
 	KeyTriggerSchedule: key.NewBinding(
 		key.WithKeys("r"),
 		key.WithHelp("r", "run now"),
+	),
+	KeyOpenPR: key.NewBinding(
+		key.WithKeys("p"),
+		key.WithHelp("p", "open PR"),
+	),
+	KeyCopyPR: key.NewBinding(
+		key.WithKeys("P"),
+		key.WithHelp("P", "copy PR URL"),
 	),
 	KeyLeft: key.NewBinding(
 		key.WithKeys("h", "left"),

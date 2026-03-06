@@ -209,12 +209,23 @@ func (r *InstanceRenderer) Render(i *session.Instance, idx int, selected bool, h
 
 	branchLine := fmt.Sprintf("%s %s-%s%s%s", strings.Repeat(" ", len(prefix)), branchIcon, branch, spaces, diff)
 
+	// Build PR info line if available
+	var prLine string
+	if prInfo := i.GetPRInfo(); prInfo != nil {
+		prText := fmt.Sprintf("PR #%d: %s", prInfo.Number, prInfo.Title)
+		prMaxWidth := r.width - len(prefix) - 2
+		if prMaxWidth > 0 && runewidth.StringWidth(prText) > prMaxWidth {
+			prText = runewidth.Truncate(prText, prMaxWidth-3, "...")
+		}
+		prLine = fmt.Sprintf("%s %s", strings.Repeat(" ", len(prefix)), prText)
+	}
+
 	// join title and subtitle
-	text := lipgloss.JoinVertical(
-		lipgloss.Left,
-		title,
-		descS.Render(branchLine),
-	)
+	lines := []string{title, descS.Render(branchLine)}
+	if prLine != "" {
+		lines = append(lines, descS.Render(prLine))
+	}
+	text := lipgloss.JoinVertical(lipgloss.Left, lines...)
 
 	return text
 }
