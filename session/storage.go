@@ -138,21 +138,32 @@ func (s *Storage) LoadInstances() ([]*Instance, error) {
 	return instances, nil
 }
 
-// DeleteInstance removes an instance from storage
+// DeleteInstance removes an instance from storage by operating directly on the
+// raw JSON data. This avoids going through FromInstanceData/LoadInstances which
+// would try to restart the instance (and fail for already-killed instances whose
+// tmux session and worktree have been destroyed).
 func (s *Storage) DeleteInstance(title string) error {
-	instances, err := s.LoadInstances()
-	if err != nil {
-		return fmt.Errorf("failed to load instances: %w", err)
+	if s.repoID == "" {
+		return fmt.Errorf("DeleteInstance requires a repo-scoped storage (non-empty repoID)")
+	}
+
+	raw := s.state.GetInstances(s.repoID)
+	if raw == nil || string(raw) == "[]" || string(raw) == "null" {
+		return fmt.Errorf("instance not found: %s", title)
+	}
+
+	var allData []InstanceData
+	if err := json.Unmarshal(raw, &allData); err != nil {
+		return fmt.Errorf("failed to unmarshal instances: %w", err)
 	}
 
 	found := false
-	newInstances := make([]*Instance, 0)
-	for _, instance := range instances {
-		data := instance.ToInstanceData()
-		if data.Title != title {
-			newInstances = append(newInstances, instance)
-		} else {
+	filtered := make([]InstanceData, 0, len(allData))
+	for _, d := range allData {
+		if d.Title == title {
 			found = true
+		} else {
+			filtered = append(filtered, d)
 		}
 	}
 
@@ -160,7 +171,11 @@ func (s *Storage) DeleteInstance(title string) error {
 		return fmt.Errorf("instance not found: %s", title)
 	}
 
-	return s.SaveInstances(newInstances)
+	jsonData, err := json.Marshal(filtered)
+	if err != nil {
+		return fmt.Errorf("failed to marshal instances: %w", err)
+	}
+	return s.state.SaveInstances(s.repoID, jsonData)
 }
 
 
