@@ -27,6 +27,7 @@ type SchedulePane struct {
 	creating       bool
 	createPath     string
 	pendingCreate  bool
+	pendingTrigger bool
 
 	width, height int
 	dirty         bool
@@ -137,6 +138,28 @@ func (s *SchedulePane) ConsumePendingCreate() (prompt, cron, path string) {
 	return s.editPrompt.Value(), s.editCron.Value(), s.editPath.Value()
 }
 
+// SetPendingTrigger marks the currently selected schedule to be triggered.
+func (s *SchedulePane) SetPendingTrigger() {
+	if len(s.schedules) > 0 {
+		s.pendingTrigger = true
+	}
+}
+
+// HasPendingTrigger returns true if a schedule was triggered to run immediately.
+func (s *SchedulePane) HasPendingTrigger() bool {
+	return s.pendingTrigger
+}
+
+// ConsumePendingTrigger returns the triggered schedule and clears the flag.
+func (s *SchedulePane) ConsumePendingTrigger() *schedule.Schedule {
+	s.pendingTrigger = false
+	if s.selectedIdx < len(s.schedules) {
+		sched := s.schedules[s.selectedIdx]
+		return &sched
+	}
+	return nil
+}
+
 // HandleKeyPress processes a key press. Returns true if consumed.
 func (s *SchedulePane) HandleKeyPress(msg tea.KeyMsg) bool {
 	if !s.hasFocus {
@@ -183,6 +206,11 @@ func (s *SchedulePane) handleNormalMode(msg tea.KeyMsg) bool {
 	case "enter":
 		if len(s.schedules) > 0 {
 			s.enterEditMode()
+		}
+		return true
+	case "r":
+		if len(s.schedules) > 0 {
+			s.pendingTrigger = true
 		}
 		return true
 	case "n":
@@ -361,7 +389,7 @@ func (s *SchedulePane) renderListMode() string {
 
 	b.WriteString("\n")
 	if s.hasFocus {
-		b.WriteString(hintStyle.Render("n new • enter edit • x toggle • D delete • esc back"))
+		b.WriteString(hintStyle.Render("n new • enter edit • r run now • x toggle • D delete • esc back"))
 	} else {
 		b.WriteString(hintStyle.Render("enter to focus and edit schedules"))
 	}

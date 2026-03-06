@@ -42,6 +42,7 @@ func (h helpTypeGeneral) toContent() string {
 		keyStyle.Render("N")+descStyle.Render("         - Create a new session with a prompt"),
 		keyStyle.Render("s")+descStyle.Render("         - Schedule a recurring task"),
 		keyStyle.Render("S")+descStyle.Render("         - List scheduled tasks"),
+		keyStyle.Render("r")+descStyle.Render("         - Run selected schedule now"),
 		keyStyle.Render("D")+descStyle.Render("         - Kill (delete) the selected session"),
 		keyStyle.Render("↑/j, ↓/k")+descStyle.Render("  - Navigate between sessions"),
 		keyStyle.Render("↵/o")+descStyle.Render("       - Attach to the selected session"),

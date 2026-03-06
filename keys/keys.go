@@ -31,7 +31,8 @@ const (
 	KeyTasks
 	KeyMicroClaw // Key for sending a message to microclaw
 
-	KeySearch // Key for searching sessions
+	KeySearch          // Key for searching sessions
+	KeyTriggerSchedule // Key for triggering a schedule immediately
 
 	// Sidebar navigation
 	KeyLeft        // Collapse section / move to parent
@@ -63,6 +64,7 @@ var GlobalKeyStringsMap = map[string]KeyName{
 	"t":          KeyTasks,
 	"m":          KeyMicroClaw,
 	"/":          KeySearch,
+	"r":          KeyTriggerSchedule,
 	"h":          KeyLeft,
 	"left":       KeyLeft,
 	"l":          KeyRight,
@@ -144,6 +146,10 @@ var GlobalKeyBindings = map[KeyName]key.Binding{
 	KeySearch: key.NewBinding(
 		key.WithKeys("/"),
 		key.WithHelp("/", "search"),
+	),
+	KeyTriggerSchedule: key.NewBinding(
+		key.WithKeys("r"),
+		key.WithHelp("r", "run now"),
 	),
 	KeyLeft: key.NewBinding(
 		key.WithKeys("h", "left"),

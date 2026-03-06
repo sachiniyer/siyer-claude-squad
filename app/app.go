@@ -498,6 +498,73 @@ func (m *home) handleScheduleCreate() tea.Cmd {
 	return nil
 }
 
+// handleScheduleTrigger immediately spawns an instance for the selected schedule.
+func (m *home) handleScheduleTrigger() tea.Cmd {
+	sp := m.contentPane.SchedulePane()
+	sched := sp.ConsumePendingTrigger()
+	if sched == nil {
+		return m.handleError(fmt.Errorf("no schedule selected"))
+	}
+
+	if m.sidebar.NumInstances() >= GlobalInstanceLimit {
+		return m.handleError(fmt.Errorf("you can't create more than %d instances", GlobalInstanceLimit))
+	}
+
+	title := fmt.Sprintf("sched-%s-%s", sched.ID, time.Now().Format("20060102-150405"))
+
+	instance, err := session.NewInstance(session.InstanceOptions{
+		Title:   title,
+		Path:    sched.ProjectPath,
+		Program: sched.Program,
+	})
+	if err != nil {
+		return m.handleError(fmt.Errorf("failed to create instance: %w", err))
+	}
+
+	finalizer := m.sidebar.AddInstance(instance)
+	m.sidebar.SetSelectedInstance(m.sidebar.NumInstances() - 1)
+	instance.SetStatus(session.Loading)
+	finalizer()
+	m.menu.SetState(ui.StateDefault)
+
+	prompt := sched.Prompt
+	schedID := sched.ID
+	startCmd := func() tea.Msg {
+		if err := instance.Start(true); err != nil {
+			return instanceStartedMsg{instance: instance, err: err}
+		}
+
+		if err := schedule.WaitForReady(instance); err != nil {
+			return instanceStartedMsg{instance: instance, err: err}
+		}
+
+		if instance.CheckAndHandleTrustPrompt() {
+			time.Sleep(1 * time.Second)
+			if err := schedule.WaitForReady(instance); err != nil {
+				return instanceStartedMsg{instance: instance, err: err}
+			}
+		}
+
+		if err := instance.SendPromptCommand(prompt); err != nil {
+			return instanceStartedMsg{instance: instance, err: err}
+		}
+
+		// Update schedule last run status.
+		if s, err := schedule.GetSchedule(schedID); err == nil {
+			now := time.Now()
+			s.LastRunAt = &now
+			s.LastRunStatus = "triggered"
+			if err := schedule.UpdateSchedule(*s); err != nil {
+				log.ErrorLog.Printf("failed to update schedule status: %v", err)
+			}
+		}
+
+		return instanceStartedMsg{instance: instance, err: nil}
+	}
+
+	return tea.Batch(tea.WindowSize(), m.selectionChanged(), startCmd)
+}
+
 func (m *home) handleMenuHighlighting(msg tea.KeyMsg) (cmd tea.Cmd, returnEarly bool) {
 	if m.keySent {
 		m.keySent = false
@@ -732,6 +799,9 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			if sp.HasPendingCreate() {
 				return m, m.handleScheduleCreate()
 			}
+			if sp.HasPendingTrigger() {
+				return m, m.handleScheduleTrigger()
+			}
 			return m, nil
 		}
 	}
@@ -872,6 +942,20 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		// Navigate to schedules section in sidebar
 		m.navigateToSection(ui.SectionSchedules)
 		return m, m.selectionChanged()
+
+	case keys.KeyTriggerSchedule:
+		// Only trigger when viewing schedules section
+		if m.sidebar.GetSelection().Kind != ui.SectionSchedules {
+			return m, nil
+		}
+		sp := m.contentPane.SchedulePane()
+		if len(sp.GetSchedules()) == 0 {
+			return m, m.handleError(fmt.Errorf("no schedules to trigger"))
+		}
+		m.contentPane.SetMode(ui.ContentModeSchedules)
+		sp.SetFocus(true)
+		sp.SetPendingTrigger()
+		return m, m.handleScheduleTrigger()
 
 	case keys.KeyTasks:
 		// Navigate to todos section in sidebar
