@@ -23,10 +23,19 @@ func (g *GitWorktree) Setup() error {
 	_, err := g.runGitCommand(g.repoPath, "show-ref", "--verify", fmt.Sprintf("refs/heads/%s", g.branchName))
 	branchExists := err == nil
 
+	var setupErr error
 	if branchExists {
-		return g.setupFromExistingBranch()
+		setupErr = g.setupFromExistingBranch()
+	} else {
+		setupErr = g.setupNewWorktree()
 	}
-	return g.setupNewWorktree()
+	if setupErr != nil {
+		return setupErr
+	}
+
+	// Fire-and-forget post-worktree hooks
+	RunPostWorktreeHooksAsync(g.repoPath, g.worktreePath)
+	return nil
 }
 
 // setupFromExistingBranch creates a worktree from an existing branch
