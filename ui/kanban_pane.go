@@ -34,7 +34,8 @@ type KanbanPane struct {
 	dirty       bool
 	hasFocus    bool
 
-	pendingJumpInstance string
+	pendingJumpInstance   string
+	pendingAttachInstance string
 }
 
 func NewKanbanPane() *KanbanPane { return &KanbanPane{} }
@@ -53,6 +54,18 @@ func (k *KanbanPane) PendingJumpInstance() string {
 func (k *KanbanPane) ConsumePendingJump() string {
 	title := k.pendingJumpInstance
 	k.pendingJumpInstance = ""
+	return title
+}
+
+// PendingAttachInstance returns the instance title to attach to, if any.
+func (k *KanbanPane) PendingAttachInstance() string {
+	return k.pendingAttachInstance
+}
+
+// ConsumePendingAttach returns and clears the pending attach instance.
+func (k *KanbanPane) ConsumePendingAttach() string {
+	title := k.pendingAttachInstance
+	k.pendingAttachInstance = ""
 	return title
 }
 
@@ -134,6 +147,11 @@ func (k *KanbanPane) HandleKeyPress(msg tea.KeyMsg) bool {
 		case "o":
 			if t := k.getTaskAtFlat(k.selectedIdx); t != nil && t.InstanceTitle != "" {
 				k.pendingJumpInstance = t.InstanceTitle
+			}
+			return true
+		case "a":
+			if t := k.getTaskAtFlat(k.selectedIdx); t != nil && t.InstanceTitle != "" {
+				k.pendingAttachInstance = t.InstanceTitle
 			}
 			return true
 		}
@@ -522,6 +540,6 @@ func (k *KanbanPane) writeHints(b *strings.Builder) {
 	} else if k.carrying {
 		b.WriteString(kanbanHintStyle.Render("m drop here | j/k position | h/l column | esc cancel"))
 	} else {
-		b.WriteString(kanbanHintStyle.Render("j/k navigate | h/l column | n add | m move | d del | o open session | c clear done"))
+		b.WriteString(kanbanHintStyle.Render("j/k navigate | h/l column | n add | m move | d del | o open | a attach | c clear done"))
 	}
 }

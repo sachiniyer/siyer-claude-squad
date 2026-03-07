@@ -183,6 +183,40 @@ func TestKanbanPaneJumpNoLink(t *testing.T) {
 	assert.Empty(t, kp.PendingJumpInstance())
 }
 
+func TestKanbanPaneAttachToInstance(t *testing.T) {
+	kp := NewKanbanPane()
+	board := &task.Board{Columns: task.DefaultColumns}
+	tk := board.AddTask("Linked task", "in_progress")
+	board.LinkTask(tk.ID, "my-session")
+	kp.SetBoard(board)
+	kp.SetFocus(true)
+
+	// Navigate to in_progress column header, then to the linked task
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("l")})
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+
+	// Press 'a' to attach
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+	assert.Equal(t, "my-session", kp.PendingAttachInstance())
+
+	// Consume
+	title := kp.ConsumePendingAttach()
+	assert.Equal(t, "my-session", title)
+	assert.Empty(t, kp.PendingAttachInstance())
+}
+
+func TestKanbanPaneAttachNoLink(t *testing.T) {
+	kp := NewKanbanPane()
+	board := &task.Board{Columns: task.DefaultColumns}
+	board.AddTask("Unlinked task", "backlog")
+	kp.SetBoard(board)
+	kp.SetFocus(true)
+
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("a")})
+	assert.Empty(t, kp.PendingAttachInstance())
+}
+
 func TestKanbanPaneRenderLinkedTask(t *testing.T) {
 	kp := NewKanbanPane()
 	kp.SetSize(80, 30)

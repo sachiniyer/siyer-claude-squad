@@ -849,10 +849,13 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 			if !m.contentPane.HasFocus() {
 				m.saveContentPaneState()
 			}
-			// Check for pending jump-to-instance from kanban
+			// Check for pending jump/attach-to-instance from kanban
 			kp := m.contentPane.KanbanPane()
 			if title := kp.ConsumePendingJump(); title != "" {
 				return m, m.jumpToInstance(title)
+			}
+			if title := kp.ConsumePendingAttach(); title != "" {
+				return m.attachToInstance(title)
 			}
 			// Check if a new schedule was submitted via the inline form
 			sp := m.contentPane.SchedulePane()
@@ -1246,6 +1249,31 @@ func (m *home) jumpToInstance(title string) tea.Cmd {
 		}
 	}
 	return m.handleError(fmt.Errorf("instance %q not found", title))
+}
+
+// attachToInstance finds the instance by title and attaches to it.
+func (m *home) attachToInstance(title string) (tea.Model, tea.Cmd) {
+	for _, inst := range m.sidebar.GetInstances() {
+		if inst.Title == title {
+			if inst.Status == session.Loading || !inst.TmuxAlive() {
+				return m, m.handleError(fmt.Errorf("instance %q is not ready", title))
+			}
+			m.sidebar.ExpandInstancesSection()
+			m.sidebar.SelectInstance(inst)
+			m.contentPane.SetMode(ui.ContentModeInstance)
+			m.showHelpScreen(helpTypeInstanceAttach{}, func() {
+				ch, err := inst.Attach()
+				if err != nil {
+					log.ErrorLog.Printf("failed to attach to %s: %v", title, err)
+					return
+				}
+				<-ch
+				m.state = stateDefault
+			})
+			return m, nil
+		}
+	}
+	return m, m.handleError(fmt.Errorf("instance %q not found", title))
 }
 
 // navigateToSection moves the sidebar selection to the header of the given section.
