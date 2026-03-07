@@ -114,6 +114,9 @@ func (k *KanbanPane) HandleKeyPress(msg tea.KeyMsg) bool {
 		case "d":
 			k.deleteSelected()
 			return true
+		case "c":
+			k.clearDone()
+			return true
 		}
 	}
 
@@ -273,6 +276,18 @@ func (k *KanbanPane) deleteSelected() {
 		return
 	}
 	k.board.DeleteTask(t.ID)
+	k.dirty = true
+	k.rebuildFlat()
+}
+
+func (k *KanbanPane) clearDone() {
+	done := k.board.GetTasksByStatus("done")
+	if len(done) == 0 {
+		return
+	}
+	for _, t := range done {
+		k.board.DeleteTask(t.ID)
+	}
 	k.dirty = true
 	k.rebuildFlat()
 }
@@ -467,6 +482,6 @@ func (k *KanbanPane) writeHints(b *strings.Builder) {
 	} else if k.carrying {
 		b.WriteString(kanbanHintStyle.Render("m drop here | j/k position | h/l column | esc cancel"))
 	} else {
-		b.WriteString(kanbanHintStyle.Render("j/k navigate | h/l jump section | n add | m grab/drop | d del"))
+		b.WriteString(kanbanHintStyle.Render("j/k navigate | h/l column | n add | m move | d del | c clear done"))
 	}
 }
