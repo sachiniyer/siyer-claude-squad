@@ -82,7 +82,7 @@ func (k *KanbanPane) HandleKeyPress(msg tea.KeyMsg) bool {
 	case "right", "l":
 		k.jumpNextColumn()
 		return true
-	case "M":
+	case "m":
 		if k.carrying {
 			k.dropCarry()
 		} else {
@@ -111,7 +111,7 @@ func (k *KanbanPane) HandleKeyPress(msg tea.KeyMsg) bool {
 				k.editBuffer = t.Title
 			}
 			return true
-		case "D":
+		case "d":
 			k.deleteSelected()
 			return true
 		}
@@ -465,8 +465,8 @@ func (k *KanbanPane) writeHints(b *strings.Builder) {
 	} else if k.editing || k.adding {
 		b.WriteString(kanbanHintStyle.Render("enter save | esc cancel"))
 	} else if k.carrying {
-		b.WriteString(kanbanHintStyle.Render("M drop here | j/k position | h/l column | esc cancel"))
+		b.WriteString(kanbanHintStyle.Render("m drop here | j/k position | h/l column | esc cancel"))
 	} else {
-		b.WriteString(kanbanHintStyle.Render("j/k navigate | h/l jump section | n add | M grab/drop | D del"))
+		b.WriteString(kanbanHintStyle.Render("j/k navigate | h/l jump section | n add | m grab/drop | d del"))
 	}
 }

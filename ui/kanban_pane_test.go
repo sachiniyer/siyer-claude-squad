@@ -82,7 +82,7 @@ func TestKanbanPaneDelete(t *testing.T) {
 	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
 	assert.Equal(t, 1, kp.selectedIdx)
 
-	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("D")})
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("d")})
 	assert.True(t, kp.IsDirty())
 	assert.Equal(t, 3, kp.GetBoard().TaskCount())
 }
@@ -96,7 +96,7 @@ func TestKanbanPaneGrabDrop(t *testing.T) {
 	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
 
 	// Grab
-	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("M")})
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("m")})
 	assert.True(t, kp.carrying)
 	assert.NotNil(t, kp.carriedTask)
 	assert.Equal(t, 3, kp.GetBoard().TaskCount()) // removed from board
@@ -106,7 +106,7 @@ func TestKanbanPaneGrabDrop(t *testing.T) {
 	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("l")})
 
 	// Drop
-	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("M")})
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("m")})
 	assert.False(t, kp.carrying)
 	assert.Equal(t, 4, kp.GetBoard().TaskCount())
 
@@ -122,7 +122,7 @@ func TestKanbanPaneGrabCancel(t *testing.T) {
 
 	// Move to first task and grab
 	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("j")})
-	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("M")})
+	kp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("m")})
 	assert.True(t, kp.carrying)
 
 	// Cancel
