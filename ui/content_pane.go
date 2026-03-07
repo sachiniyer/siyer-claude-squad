@@ -100,8 +100,8 @@ func (c *ContentPane) HandleKeyPress(msg tea.KeyMsg) bool {
 		if c.kanbanPane.HasFocus() {
 			return c.kanbanPane.HandleKeyPress(msg)
 		}
-		// Enter focuses the kanban pane
-		if msg.String() == "enter" || msg.String() == "o" {
+		// Enter/o/a focuses the kanban pane
+		if msg.String() == "enter" || msg.String() == "o" || msg.String() == "a" {
 			c.kanbanPane.SetFocus(true)
 			return true
 		}

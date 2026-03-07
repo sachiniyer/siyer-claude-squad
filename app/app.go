@@ -916,6 +916,14 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		}
 	}
 
+	// Route 'a' to board when viewing Board section (instead of worktree attach)
+	if name == keys.KeyAttach && m.contentPane.GetMode() == ui.ContentModeTodos {
+		consumed := m.contentPane.HandleKeyPress(msg)
+		if consumed {
+			return m, nil
+		}
+	}
+
 	switch name {
 	case keys.KeyHelp:
 		return m.showHelpScreen(helpTypeGeneral{}, nil)
