@@ -13,8 +13,8 @@ type ContentMode int
 
 const (
 	ContentModeInstance ContentMode = iota
-	ContentModeTodos
-	ContentModeSchedules
+	ContentModeBoard
+	ContentModeTasks
 	ContentModeHooks
 	ContentModeMicroClaw
 	ContentModeEmpty
@@ -26,7 +26,7 @@ type ContentPane struct {
 	mode         ContentMode
 	tabbedWindow *TabbedWindow
 	kanbanPane   *KanbanPane
-	schedulePane *SchedulePane
+	taskPane     *TaskPane
 	hooksPane    *HooksPane
 	microclaw    *MicroClawPane
 
@@ -39,7 +39,7 @@ func NewContentPane(tw *TabbedWindow, mc *MicroClawPane) *ContentPane {
 		mode:         ContentModeEmpty,
 		tabbedWindow: tw,
 		kanbanPane:   NewKanbanPane(),
-		schedulePane: NewSchedulePane(),
+		taskPane:     NewTaskPane(),
 		hooksPane:    NewHooksPane(),
 		microclaw:    mc,
 	}
@@ -55,7 +55,7 @@ func (c *ContentPane) SetSize(width, height int) {
 	contentWidth := AdjustPreviewWidth(width) - windowStyle.GetHorizontalFrameSize()
 	contentHeight := height - windowStyle.GetVerticalFrameSize() - 4
 	c.kanbanPane.SetSize(contentWidth, contentHeight)
-	c.schedulePane.SetSize(contentWidth, contentHeight)
+	c.taskPane.SetSize(contentWidth, contentHeight)
 	c.hooksPane.SetSize(contentWidth, contentHeight)
 	if c.microclaw != nil {
 		c.microclaw.SetSize(contentWidth, contentHeight)
@@ -69,7 +69,7 @@ func (c *ContentPane) SetMode(mode ContentMode) {
 	}
 	// Unfocus panes when switching away
 	c.kanbanPane.SetFocus(false)
-	c.schedulePane.SetFocus(false)
+	c.taskPane.SetFocus(false)
 	c.hooksPane.SetFocus(false)
 	c.mode = mode
 }
@@ -82,10 +82,10 @@ func (c *ContentPane) GetMode() ContentMode {
 // HasFocus returns true if the content pane has captured input focus.
 func (c *ContentPane) HasFocus() bool {
 	switch c.mode {
-	case ContentModeTodos:
+	case ContentModeBoard:
 		return c.kanbanPane.HasFocus()
-	case ContentModeSchedules:
-		return c.schedulePane.HasFocus()
+	case ContentModeTasks:
+		return c.taskPane.HasFocus()
 	case ContentModeHooks:
 		return c.hooksPane.HasFocus()
 	}
@@ -96,7 +96,7 @@ func (c *ContentPane) HasFocus() bool {
 // Returns true if the key was consumed.
 func (c *ContentPane) HandleKeyPress(msg tea.KeyMsg) bool {
 	switch c.mode {
-	case ContentModeTodos:
+	case ContentModeBoard:
 		if c.kanbanPane.HasFocus() {
 			return c.kanbanPane.HandleKeyPress(msg)
 		}
@@ -105,12 +105,12 @@ func (c *ContentPane) HandleKeyPress(msg tea.KeyMsg) bool {
 			c.kanbanPane.SetFocus(true)
 			return true
 		}
-	case ContentModeSchedules:
-		if c.schedulePane.HasFocus() {
-			return c.schedulePane.HandleKeyPress(msg)
+	case ContentModeTasks:
+		if c.taskPane.HasFocus() {
+			return c.taskPane.HandleKeyPress(msg)
 		}
 		if msg.String() == "enter" || msg.String() == "o" {
-			c.schedulePane.SetFocus(true)
+			c.taskPane.SetFocus(true)
 			return true
 		}
 	case ContentModeHooks:
@@ -135,9 +135,9 @@ func (c *ContentPane) KanbanPane() *KanbanPane {
 	return c.kanbanPane
 }
 
-// SchedulePane returns the schedule pane.
-func (c *ContentPane) SchedulePane() *SchedulePane {
-	return c.schedulePane
+// TaskPane returns the task pane.
+func (c *ContentPane) TaskPane() *TaskPane {
+	return c.taskPane
 }
 
 // HooksPane returns the hooks pane.
@@ -210,10 +210,10 @@ func (c *ContentPane) String() string {
 	switch c.mode {
 	case ContentModeInstance:
 		return c.tabbedWindow.String()
-	case ContentModeTodos:
+	case ContentModeBoard:
 		return c.renderInlinePane(c.kanbanPane.String())
-	case ContentModeSchedules:
-		return c.renderInlinePane(c.schedulePane.String())
+	case ContentModeTasks:
+		return c.renderInlinePane(c.taskPane.String())
 	case ContentModeHooks:
 		return c.renderInlinePane(c.hooksPane.String())
 	case ContentModeMicroClaw:

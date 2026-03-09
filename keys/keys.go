@@ -25,14 +25,14 @@ const (
 	KeyShiftUp
 	KeyShiftDown
 
-	KeySchedule
-	KeyScheduleList
+	KeyTask
+	KeyTaskList
 	KeyAttach
-	KeyTasks
+	KeyBoard
 	KeyMicroClaw // Key for sending a message to microclaw
 
-	KeySearch          // Key for searching sessions
-	KeyTriggerSchedule // Key for triggering a schedule immediately
+	KeySearch      // Key for searching sessions
+	KeyTriggerTask // Key for triggering a task immediately
 
 	KeyOpenPR // Key for opening PR in browser
 	KeyCopyPR // Key for copying PR URL to clipboard
@@ -62,13 +62,13 @@ var GlobalKeyStringsMap = map[string]KeyName{
 	"tab":        KeyTab,
 	"shift+tab":  KeyShiftTab,
 	"?":          KeyHelp,
-	"s":          KeySchedule,
-	"S":          KeyScheduleList,
+	"s":          KeyTask,
+	"S":          KeyTaskList,
 	"a":          KeyAttach,
-	"t":          KeyTasks,
+	"t":          KeyBoard,
 	"m":          KeyMicroClaw,
 	"/":          KeySearch,
-	"r":          KeyTriggerSchedule,
+	"r":          KeyTriggerTask,
 	"p":          KeyOpenPR,
 	"P":          KeyCopyPR,
 	"H":          KeyHooks,
@@ -130,21 +130,21 @@ var GlobalKeyBindings = map[KeyName]key.Binding{
 		key.WithKeys("shift+tab"),
 		key.WithHelp("shift+tab", "prev tab"),
 	),
-	KeySchedule: key.NewBinding(
+	KeyTask: key.NewBinding(
 		key.WithKeys("s"),
-		key.WithHelp("s", "schedule"),
+		key.WithHelp("s", "task"),
 	),
-	KeyScheduleList: key.NewBinding(
+	KeyTaskList: key.NewBinding(
 		key.WithKeys("S"),
-		key.WithHelp("S", "list schedules"),
+		key.WithHelp("S", "list tasks"),
 	),
 	KeyAttach: key.NewBinding(
 		key.WithKeys("a"),
 		key.WithHelp("a", "attach worktree"),
 	),
-	KeyTasks: key.NewBinding(
+	KeyBoard: key.NewBinding(
 		key.WithKeys("t"),
-		key.WithHelp("t", "tasks"),
+		key.WithHelp("t", "board"),
 	),
 	KeyMicroClaw: key.NewBinding(
 		key.WithKeys("m"),
@@ -154,7 +154,7 @@ var GlobalKeyBindings = map[KeyName]key.Binding{
 		key.WithKeys("/"),
 		key.WithHelp("/", "search"),
 	),
-	KeyTriggerSchedule: key.NewBinding(
+	KeyTriggerTask: key.NewBinding(
 		key.WithKeys("r"),
 		key.WithHelp("r", "run now"),
 	),

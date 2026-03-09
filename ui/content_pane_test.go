@@ -16,11 +16,11 @@ func TestContentPaneModeSwitch(t *testing.T) {
 	cp.SetMode(ContentModeInstance)
 	assert.Equal(t, ContentModeInstance, cp.GetMode())
 
-	cp.SetMode(ContentModeTodos)
-	assert.Equal(t, ContentModeTodos, cp.GetMode())
+	cp.SetMode(ContentModeBoard)
+	assert.Equal(t, ContentModeBoard, cp.GetMode())
 
-	cp.SetMode(ContentModeSchedules)
-	assert.Equal(t, ContentModeSchedules, cp.GetMode())
+	cp.SetMode(ContentModeTasks)
+	assert.Equal(t, ContentModeTasks, cp.GetMode())
 
 	cp.SetMode(ContentModeMicroClaw)
 	assert.Equal(t, ContentModeMicroClaw, cp.GetMode())
@@ -33,8 +33,8 @@ func TestContentPaneFocus(t *testing.T) {
 	// No focus initially
 	assert.False(t, cp.HasFocus())
 
-	// Switch to todos mode
-	cp.SetMode(ContentModeTodos)
+	// Switch to board mode
+	cp.SetMode(ContentModeBoard)
 	assert.False(t, cp.HasFocus())
 
 	// Enter focuses the task pane
@@ -50,14 +50,14 @@ func TestContentPaneFocus(t *testing.T) {
 	assert.False(t, cp.HasFocus())
 }
 
-func TestContentPaneScheduleFocus(t *testing.T) {
+func TestContentPaneTaskFocus(t *testing.T) {
 	tw := NewTabbedWindow(NewPreviewPane(), NewDiffPane(), NewTerminalPane())
 	cp := NewContentPane(tw, nil)
 
-	cp.SetMode(ContentModeSchedules)
+	cp.SetMode(ContentModeTasks)
 	assert.False(t, cp.HasFocus())
 
-	// Enter focuses schedule pane
+	// Enter focuses task pane
 	msg := tea.KeyMsg{Type: tea.KeyRunes, Runes: []rune("o")}
 	consumed := cp.HandleKeyPress(msg)
 	assert.True(t, consumed)
@@ -69,7 +69,7 @@ func TestContentPaneModeSwitchUnfocuses(t *testing.T) {
 	cp := NewContentPane(tw, nil)
 
 	// Focus task pane
-	cp.SetMode(ContentModeTodos)
+	cp.SetMode(ContentModeBoard)
 	cp.HandleKeyPress(tea.KeyMsg{Type: tea.KeyEnter})
 	assert.True(t, cp.HasFocus())
 
@@ -94,8 +94,8 @@ func TestContentPaneRender(t *testing.T) {
 	rendered = cp.String()
 	assert.NotEmpty(t, rendered)
 
-	// Todos mode (kanban board)
-	cp.SetMode(ContentModeTodos)
+	// Board mode (kanban board)
+	cp.SetMode(ContentModeBoard)
 	rendered = cp.String()
 	assert.Contains(t, rendered, "Board")
 }

@@ -11,7 +11,7 @@ import (
 	"github.com/sachiniyer/agent-factory/daemon"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/microclaw"
-	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/git"
 	"github.com/sachiniyer/agent-factory/session/tmux"
@@ -176,7 +176,7 @@ func init() {
 	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(resetCmd)
 	rootCmd.AddCommand(upgradeCmd)
-	rootCmd.AddCommand(schedule.ScheduleCmd)
+	rootCmd.AddCommand(task.TaskCmd)
 	rootCmd.AddCommand(api.ApiCmd)
 	rootCmd.AddCommand(microclaw.MicroClawCmd)
 }

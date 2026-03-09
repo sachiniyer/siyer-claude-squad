@@ -2,10 +2,10 @@ package app
 
 import (
 	"fmt"
+	"github.com/sachiniyer/agent-factory/board"
 	"github.com/sachiniyer/agent-factory/keys"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
-	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/ui"
 	"os"
 	"os/exec"
@@ -48,47 +48,47 @@ func (m *home) handleDefaultKeyPress(msg tea.KeyMsg, name keys.KeyName) (tea.Mod
 		return m.startNewInstance(true)
 
 	case keys.KeyNew:
-		// Context-aware: if on Schedules section, create a schedule instead
-		if m.sidebar.GetSelection().Kind == ui.SectionSchedules {
+		// Context-aware: if on Tasks section, create a task instead
+		if m.sidebar.GetSelection().Kind == ui.SectionTasks {
 			cwd, err := os.Getwd()
 			if err != nil {
 				cwd = "."
 			}
-			m.contentPane.SchedulePane().EnterCreateMode(cwd)
-			m.contentPane.SetMode(ui.ContentModeSchedules)
+			m.contentPane.TaskPane().EnterCreateMode(cwd)
+			m.contentPane.SetMode(ui.ContentModeTasks)
 			return m, m.selectionChanged()
 		}
 		return m.startNewInstance(false)
 
-	case keys.KeySchedule:
+	case keys.KeyTask:
 		cwd, err := os.Getwd()
 		if err != nil {
 			cwd = "."
 		}
-		m.contentPane.SchedulePane().EnterCreateMode(cwd)
-		m.navigateToSection(ui.SectionSchedules)
-		m.contentPane.SetMode(ui.ContentModeSchedules)
+		m.contentPane.TaskPane().EnterCreateMode(cwd)
+		m.navigateToSection(ui.SectionTasks)
+		m.contentPane.SetMode(ui.ContentModeTasks)
 		return m, m.selectionChanged()
 
-	case keys.KeyScheduleList:
-		m.navigateToSection(ui.SectionSchedules)
+	case keys.KeyTaskList:
+		m.navigateToSection(ui.SectionTasks)
 		return m, m.selectionChanged()
 
-	case keys.KeyTriggerSchedule:
-		if m.sidebar.GetSelection().Kind != ui.SectionSchedules {
+	case keys.KeyTriggerTask:
+		if m.sidebar.GetSelection().Kind != ui.SectionTasks {
 			return m, nil
 		}
-		sp := m.contentPane.SchedulePane()
-		if len(sp.GetSchedules()) == 0 {
-			return m, m.handleError(fmt.Errorf("no schedules to trigger"))
+		sp := m.contentPane.TaskPane()
+		if len(sp.GetTasks()) == 0 {
+			return m, m.handleError(fmt.Errorf("no tasks to trigger"))
 		}
-		m.contentPane.SetMode(ui.ContentModeSchedules)
+		m.contentPane.SetMode(ui.ContentModeTasks)
 		sp.SetFocus(true)
 		sp.SetPendingTrigger()
-		return m, m.handleScheduleTrigger()
+		return m, m.handleTaskTrigger()
 
-	case keys.KeyTasks:
-		m.navigateToSection(ui.SectionTodos)
+	case keys.KeyBoard:
+		m.navigateToSection(ui.SectionBoard)
 		return m, m.selectionChanged()
 
 	case keys.KeyMicroClaw:
@@ -166,14 +166,14 @@ func (m *home) handleKill() (tea.Model, tea.Cmd) {
 		}
 
 		// Auto-move linked board task to "done"
-		if board := m.contentPane.KanbanPane().GetBoard(); board != nil {
-			if linkedTask := board.FindTaskByInstance(selected.Title); linkedTask != nil {
-				if err := board.MoveTask(linkedTask.ID, "done"); err == nil {
-					if err := task.SaveBoard(board); err != nil {
+		if b := m.contentPane.KanbanPane().GetBoard(); b != nil {
+			if linkedTask := b.FindTaskByInstance(selected.Title); linkedTask != nil {
+				if err := b.MoveTask(linkedTask.ID, "done"); err == nil {
+					if err := board.SaveBoard(b); err != nil {
 						log.ErrorLog.Printf("failed to save board after moving task to done: %v", err)
 					}
-					m.contentPane.KanbanPane().SetBoard(board)
-					m.sidebar.SetTaskCount(board.TaskCount())
+					m.contentPane.KanbanPane().SetBoard(b)
+					m.sidebar.SetTaskCount(b.TaskCount())
 				}
 			}
 		}

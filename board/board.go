@@ -1,4 +1,4 @@
-package task
+package board
 
 import (
 	"crypto/rand"
@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/sachiniyer/agent-factory/config"
+
 	"os"
 	"path/filepath"
 	"time"

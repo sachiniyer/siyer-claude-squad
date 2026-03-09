@@ -2,7 +2,10 @@ package api
 
 import (
 	"fmt"
+	"path/filepath"
+	"time"
 
+	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/task"
 
@@ -16,35 +19,52 @@ var tasksCmd = &cobra.Command{
 
 var tasksListCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List tasks for a repo",
+	Short: "List tasks",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log.Initialize(false)
 		defer log.Close()
 
-		repo, err := resolveRepo()
-		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
-		}
-
-		tasks, err := task.LoadTasksForRepo(repo)
+		tasks, err := task.LoadTasks()
 		if err != nil {
 			return jsonError(fmt.Errorf("failed to load tasks: %w", err))
+		}
+
+		// Filter by repo if --repo is set
+		if repoFlag != "" {
+			absPath, err := filepath.Abs(repoFlag)
+			if err != nil {
+				return jsonError(fmt.Errorf("failed to resolve repo path: %w", err))
+			}
+			repo, err := config.RepoFromPath(absPath)
+			if err != nil {
+				return jsonError(fmt.Errorf("failed to get repo from path: %w", err))
+			}
+			var filtered []task.Task
+			for _, s := range tasks {
+				if s.ProjectPath == repo.Root {
+					filtered = append(filtered, s)
+				}
+			}
+			tasks = filtered
+		}
+
+		if tasks == nil {
+			tasks = []task.Task{}
 		}
 		return jsonOut(tasks)
 	},
 }
 
 var (
-	taskAddTitleFlag     string
-	taskAddStatusFlag    string
-	taskAddInstanceFlag  string
-	taskLinkInstanceFlag string
-	tasksMoveStatusFlag  string
+	taskAddNameFlag    string
+	taskAddPromptFlag  string
+	taskAddCronFlag    string
+	taskAddProgramFlag string
 )
 
 var tasksAddCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add a task",
+	Short: "Add a new task",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		log.Initialize(false)
 		defer log.Close()
@@ -54,45 +74,36 @@ var tasksAddCmd = &cobra.Command{
 			return jsonError(fmt.Errorf("--repo is required: %w", err))
 		}
 
-		status := taskAddStatusFlag
-		if status == "" {
-			status = "backlog"
+		if err := task.ValidateCronExpr(taskAddCronFlag); err != nil {
+			return jsonError(fmt.Errorf("invalid cron expression: %w", err))
 		}
 
-		board, err := task.LoadBoardForRepo(repo)
-		if err != nil {
-			return jsonError(fmt.Errorf("failed to load board: %w", err))
-		}
-		t := board.AddTask(taskAddTitleFlag, status)
-		if taskAddInstanceFlag != "" {
-			board.LinkTask(t.ID, taskAddInstanceFlag)
-			// Re-fetch so we output the linked version
-			t.InstanceTitle = taskAddInstanceFlag
-		}
-		if err := task.SaveBoardForRepo(repo, board); err != nil {
-			return jsonError(fmt.Errorf("failed to save board: %w", err))
-		}
-		return jsonOut(t)
-	},
-}
-
-var tasksToggleCmd = &cobra.Command{
-	Use:   "toggle <id>",
-	Short: "Toggle a task's done status",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		repo, err := resolveRepo()
-		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
+		program := taskAddProgramFlag
+		if program == "" {
+			program = config.LoadConfig().DefaultProgram
 		}
 
-		if err := task.ToggleTaskForRepo(repo, args[0]); err != nil {
-			return jsonError(fmt.Errorf("failed to toggle task: %w", err))
+		id := task.GenerateID()
+		s := task.Task{
+			ID:          id,
+			Name:        taskAddNameFlag,
+			Prompt:      taskAddPromptFlag,
+			CronExpr:    taskAddCronFlag,
+			ProjectPath: repo.Root,
+			Program:     program,
+			Enabled:     true,
+			CreatedAt:   time.Now(),
 		}
-		return jsonOut(map[string]bool{"ok": true})
+
+		if err := task.AddTask(s); err != nil {
+			return jsonError(fmt.Errorf("failed to add task: %w", err))
+		}
+
+		if err := task.InstallSystemdTimer(s); err != nil {
+			return jsonError(fmt.Errorf("failed to install systemd timer: %w", err))
+		}
+
+		return jsonOut(map[string]any{"id": id})
 	},
 }
 
@@ -104,115 +115,19 @@ var tasksRemoveCmd = &cobra.Command{
 		log.Initialize(false)
 		defer log.Close()
 
-		repo, err := resolveRepo()
+		s, err := task.GetTask(args[0])
 		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
+			return jsonError(fmt.Errorf("failed to get task: %w", err))
 		}
 
-		if err := task.DeleteTaskForRepo(repo, args[0]); err != nil {
+		if err := task.RemoveSystemdTimer(*s); err != nil {
+			return jsonError(fmt.Errorf("failed to remove systemd timer: %w", err))
+		}
+
+		if err := task.RemoveTask(args[0]); err != nil {
 			return jsonError(fmt.Errorf("failed to remove task: %w", err))
 		}
+
 		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
-var tasksMoveCmd = &cobra.Command{
-	Use:   "move <id>",
-	Short: "Move a task to a different column",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		repo, err := resolveRepo()
-		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
-		}
-
-		if tasksMoveStatusFlag == "" {
-			return jsonError(fmt.Errorf("--status is required"))
-		}
-
-		if err := task.MoveTaskForRepo(repo, args[0], tasksMoveStatusFlag); err != nil {
-			return jsonError(fmt.Errorf("failed to move task: %w", err))
-		}
-		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
-var tasksLinkCmd = &cobra.Command{
-	Use:   "link <id>",
-	Short: "Link a task to a session",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		repo, err := resolveRepo()
-		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
-		}
-
-		if taskLinkInstanceFlag == "" {
-			return jsonError(fmt.Errorf("--instance is required"))
-		}
-
-		if err := task.LinkTaskForRepo(repo, args[0], taskLinkInstanceFlag); err != nil {
-			return jsonError(fmt.Errorf("failed to link task: %w", err))
-		}
-		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
-var tasksUnlinkCmd = &cobra.Command{
-	Use:   "unlink <id>",
-	Short: "Remove linkage from a task",
-	Args:  cobra.ExactArgs(1),
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		repo, err := resolveRepo()
-		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
-		}
-
-		if err := task.UnlinkTaskForRepo(repo, args[0]); err != nil {
-			return jsonError(fmt.Errorf("failed to unlink task: %w", err))
-		}
-		return jsonOut(map[string]bool{"ok": true})
-	},
-}
-
-var tasksBoardCmd = &cobra.Command{
-	Use:   "board",
-	Short: "Get kanban board (columns + tasks grouped by status)",
-	RunE: func(cmd *cobra.Command, args []string) error {
-		log.Initialize(false)
-		defer log.Close()
-
-		repo, err := resolveRepo()
-		if err != nil {
-			return jsonError(fmt.Errorf("--repo is required: %w", err))
-		}
-
-		board, err := task.LoadBoardForRepo(repo)
-		if err != nil {
-			return jsonError(fmt.Errorf("failed to load board: %w", err))
-		}
-
-		// Group tasks by column for output
-		grouped := make(map[string][]task.Task)
-		for _, col := range board.Columns {
-			grouped[col] = board.GetTasksByStatus(col)
-			if grouped[col] == nil {
-				grouped[col] = []task.Task{}
-			}
-		}
-
-		return jsonOut(map[string]any{
-			"columns": board.Columns,
-			"tasks":   grouped,
-		})
 	},
 }

@@ -1,4 +1,4 @@
-package task
+package board
 
 import (
 	"encoding/json"

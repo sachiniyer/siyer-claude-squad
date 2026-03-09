@@ -4,11 +4,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/board"
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/keys"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/microclaw"
-	"github.com/sachiniyer/agent-factory/schedule"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/git"
 	"github.com/sachiniyer/agent-factory/task"
@@ -172,8 +172,8 @@ func newHome(ctx context.Context, program string, autoYes bool, repoID string) *
 		os.Exit(1)
 	}
 
-	// Merge pending instances from scheduled runs.
-	pendingData, err := schedule.LoadAndClearPendingInstances()
+	// Merge pending instances from task runs.
+	pendingData, err := task.LoadAndClearPendingInstances()
 	if err != nil {
 		log.WarningLog.Printf("Failed to load pending instances: %v", err)
 	}
@@ -239,26 +239,26 @@ func newHome(ctx context.Context, program string, autoYes bool, repoID string) *
 		}
 	}
 
-	// Load schedules for sidebar display
-	schedules, err := schedule.LoadSchedulesForCurrentRepo()
+	// Load tasks for sidebar display
+	tasks, err := task.LoadTasksForCurrentRepo()
 	if err != nil {
-		log.WarningLog.Printf("Failed to load schedules: %v", err)
+		log.WarningLog.Printf("Failed to load tasks: %v", err)
 	} else {
-		h.sidebar.SetSchedules(schedules)
+		h.sidebar.SetTasks(tasks)
 	}
 
 	// Load board for sidebar display and kanban pane
-	board, err := task.LoadBoard()
+	b, err := board.LoadBoard()
 	if err != nil {
 		log.WarningLog.Printf("Failed to load board: %v", err)
 	} else {
-		h.sidebar.SetTaskCount(board.TaskCount())
-		h.contentPane.KanbanPane().SetBoard(board)
+		h.sidebar.SetTaskCount(b.TaskCount())
+		h.contentPane.KanbanPane().SetBoard(b)
 	}
 
-	// Load schedules into schedule pane
-	if len(schedules) > 0 {
-		h.contentPane.SchedulePane().SetSchedules(schedules)
+	// Load tasks into task pane
+	if len(tasks) > 0 {
+		h.contentPane.TaskPane().SetTasks(tasks)
 	}
 
 	// Load hooks for sidebar display and hooks pane
@@ -431,7 +431,7 @@ func (m *home) cleanupMicroClaw() {
 }
 
 func (m *home) handleQuit() (tea.Model, tea.Cmd) {
-	// Save any dirty task/schedule state
+	// Save any dirty board/task state
 	m.saveContentPaneState()
 
 	if err := m.storage.SaveInstances(m.sidebar.GetInstances()); err != nil {
@@ -443,15 +443,15 @@ func (m *home) handleQuit() (tea.Model, tea.Cmd) {
 	return m, tea.Quit
 }
 
-// saveContentPaneState persists any changes from the task/schedule panes.
+// saveContentPaneState persists any changes from the board/task panes.
 func (m *home) saveContentPaneState() {
 	kp := m.contentPane.KanbanPane()
 	if kp.IsDirty() {
-		if board := kp.GetBoard(); board != nil {
-			if err := task.SaveBoard(board); err != nil {
+		if b := kp.GetBoard(); b != nil {
+			if err := board.SaveBoard(b); err != nil {
 				log.ErrorLog.Printf("failed to save board: %v", err)
 			}
-			m.sidebar.SetTaskCount(board.TaskCount())
+			m.sidebar.SetTaskCount(b.TaskCount())
 		}
 	}
 
@@ -468,55 +468,55 @@ func (m *home) saveContentPaneState() {
 		m.sidebar.SetHookCount(len(hp.GetCommands()))
 	}
 
-	sp := m.contentPane.SchedulePane()
+	sp := m.contentPane.TaskPane()
 	if sp.IsDirty() {
-		for _, sched := range sp.GetSchedules() {
-			if err := schedule.UpdateSchedule(sched); err != nil {
-				log.ErrorLog.Printf("failed to update schedule: %v", err)
+		for _, tsk := range sp.GetTasks() {
+			if err := task.UpdateTask(tsk); err != nil {
+				log.ErrorLog.Printf("failed to update task: %v", err)
 			}
-			if sched.Enabled {
-				if err := schedule.InstallSystemdTimer(sched); err != nil {
+			if tsk.Enabled {
+				if err := task.InstallSystemdTimer(tsk); err != nil {
 					log.WarningLog.Printf("failed to install timer: %v", err)
 				}
 			} else {
-				if err := schedule.RemoveSystemdTimer(sched); err != nil {
+				if err := task.RemoveSystemdTimer(tsk); err != nil {
 					log.WarningLog.Printf("failed to remove timer: %v", err)
 				}
 			}
 		}
-		for _, sched := range sp.GetDeleted() {
-			if err := schedule.RemoveSchedule(sched.ID); err != nil {
-				log.ErrorLog.Printf("failed to remove schedule: %v", err)
+		for _, tsk := range sp.GetDeleted() {
+			if err := task.RemoveTask(tsk.ID); err != nil {
+				log.ErrorLog.Printf("failed to remove task: %v", err)
 			}
-			if err := schedule.RemoveSystemdTimer(sched); err != nil {
+			if err := task.RemoveSystemdTimer(tsk); err != nil {
 				log.WarningLog.Printf("failed to remove timer: %v", err)
 			}
 		}
 		// Refresh sidebar
-		schedules, err := schedule.LoadSchedulesForCurrentRepo()
+		tasks, err := task.LoadTasksForCurrentRepo()
 		if err == nil {
-			m.sidebar.SetSchedules(schedules)
+			m.sidebar.SetTasks(tasks)
 		}
 	}
 }
 
-// handleScheduleCreate processes a pending schedule creation from the inline form.
-func (m *home) handleScheduleCreate() tea.Cmd {
-	sp := m.contentPane.SchedulePane()
+// handleTaskCreate processes a pending task creation from the inline form.
+func (m *home) handleTaskCreate() tea.Cmd {
+	sp := m.contentPane.TaskPane()
 	name, prompt, cronExpr, projectPath := sp.ConsumePendingCreate()
 
 	if name == "" {
-		return m.handleError(fmt.Errorf("schedule name is required"))
+		return m.handleError(fmt.Errorf("task name is required"))
 	}
-	if err := schedule.ValidateCronExpr(cronExpr); err != nil {
+	if err := task.ValidateCronExpr(cronExpr); err != nil {
 		return m.handleError(fmt.Errorf("invalid cron: %v", err))
 	}
 	absPath, err := filepath.Abs(projectPath)
 	if err != nil {
 		return m.handleError(fmt.Errorf("invalid path: %v", err))
 	}
-	s := schedule.Schedule{
-		ID:          schedule.GenerateID(),
+	t := task.Task{
+		ID:          task.GenerateID(),
 		Name:        name,
 		Prompt:      prompt,
 		CronExpr:    cronExpr,
@@ -525,39 +525,39 @@ func (m *home) handleScheduleCreate() tea.Cmd {
 		Enabled:     true,
 		CreatedAt:   time.Now(),
 	}
-	if err := schedule.AddSchedule(s); err != nil {
-		return m.handleError(fmt.Errorf("failed to save schedule: %v", err))
+	if err := task.AddTask(t); err != nil {
+		return m.handleError(fmt.Errorf("failed to save task: %v", err))
 	}
-	if err := schedule.InstallSystemdTimer(s); err != nil {
+	if err := task.InstallSystemdTimer(t); err != nil {
 		log.WarningLog.Printf("failed to install systemd timer: %v", err)
 	}
-	// Refresh sidebar and schedule pane
-	schedules, err := schedule.LoadSchedulesForCurrentRepo()
+	// Refresh sidebar and task pane
+	tasks, err := task.LoadTasksForCurrentRepo()
 	if err == nil {
-		m.sidebar.SetSchedules(schedules)
-		sp.SetSchedules(schedules)
+		m.sidebar.SetTasks(tasks)
+		sp.SetTasks(tasks)
 	}
 	return nil
 }
 
-// handleScheduleTrigger immediately spawns an instance for the selected schedule.
-func (m *home) handleScheduleTrigger() tea.Cmd {
-	sp := m.contentPane.SchedulePane()
-	sched := sp.ConsumePendingTrigger()
-	if sched == nil {
-		return m.handleError(fmt.Errorf("no schedule selected"))
+// handleTaskTrigger immediately spawns an instance for the selected task.
+func (m *home) handleTaskTrigger() tea.Cmd {
+	sp := m.contentPane.TaskPane()
+	tsk := sp.ConsumePendingTrigger()
+	if tsk == nil {
+		return m.handleError(fmt.Errorf("no task selected"))
 	}
 
 	if m.sidebar.NumInstances() >= GlobalInstanceLimit {
 		return m.handleError(fmt.Errorf("you can't create more than %d instances", GlobalInstanceLimit))
 	}
 
-	title := fmt.Sprintf("sched-%s-%s", sched.ID, time.Now().Format("20060102-150405"))
+	title := fmt.Sprintf("task-%s-%s", tsk.ID, time.Now().Format("20060102-150405"))
 
 	instance, err := session.NewInstance(session.InstanceOptions{
 		Title:   title,
-		Path:    sched.ProjectPath,
-		Program: sched.Program,
+		Path:    tsk.ProjectPath,
+		Program: tsk.Program,
 	})
 	if err != nil {
 		return m.handleError(fmt.Errorf("failed to create instance: %w", err))
@@ -571,33 +571,33 @@ func (m *home) handleScheduleTrigger() tea.Cmd {
 
 	// Create a board task linked to the new instance.
 	kp := m.contentPane.KanbanPane()
-	if board := kp.GetBoard(); board != nil {
-		taskTitle := sched.Name
+	if b := kp.GetBoard(); b != nil {
+		taskTitle := tsk.Name
 		if taskTitle == "" {
 			taskTitle = title
 		}
-		t := board.AddTask(taskTitle, "in_progress")
-		board.LinkTask(t.ID, title)
-		if err := task.SaveBoard(board); err != nil {
+		bt := b.AddTask(taskTitle, "in_progress")
+		b.LinkTask(bt.ID, title)
+		if err := board.SaveBoard(b); err != nil {
 			log.ErrorLog.Printf("failed to save board task: %v", err)
 		}
-		m.sidebar.SetTaskCount(board.TaskCount())
+		m.sidebar.SetTaskCount(b.TaskCount())
 	}
 
-	prompt := sched.Prompt
-	schedID := sched.ID
+	prompt := tsk.Prompt
+	taskID := tsk.ID
 	startCmd := func() tea.Msg {
 		if err := instance.Start(true); err != nil {
 			return instanceStartedMsg{instance: instance, err: err}
 		}
 
-		if err := schedule.WaitForReady(instance); err != nil {
+		if err := task.WaitForReady(instance); err != nil {
 			return instanceStartedMsg{instance: instance, err: err}
 		}
 
 		if instance.CheckAndHandleTrustPrompt() {
 			time.Sleep(1 * time.Second)
-			if err := schedule.WaitForReady(instance); err != nil {
+			if err := task.WaitForReady(instance); err != nil {
 				return instanceStartedMsg{instance: instance, err: err}
 			}
 		}
@@ -606,13 +606,13 @@ func (m *home) handleScheduleTrigger() tea.Cmd {
 			return instanceStartedMsg{instance: instance, err: err}
 		}
 
-		// Update schedule last run status.
-		if s, err := schedule.GetSchedule(schedID); err == nil {
+		// Update task last run status.
+		if t, err := task.GetTask(taskID); err == nil {
 			now := time.Now()
-			s.LastRunAt = &now
-			s.LastRunStatus = "triggered"
-			if err := schedule.UpdateSchedule(*s); err != nil {
-				log.ErrorLog.Printf("failed to update schedule status: %v", err)
+			t.LastRunAt = &now
+			t.LastRunStatus = "triggered"
+			if err := task.UpdateTask(*t); err != nil {
+				log.ErrorLog.Printf("failed to update task status: %v", err)
 			}
 		}
 
@@ -680,7 +680,7 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m.handleStateSearch(msg)
 	}
 
-	// Route keys to content pane if it has focus (e.g., editing todos/schedules)
+	// Route keys to content pane if it has focus (e.g., editing board/tasks)
 	if mod, cmd, consumed := m.handleContentPaneFocus(msg); consumed {
 		return mod, cmd
 	}
@@ -721,7 +721,7 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle content pane Enter/attach for focusing (todos/schedules/hooks)
+	// Handle content pane Enter/attach for focusing (board/tasks/hooks)
 	if mod, cmd, consumed := m.handleContentPaneEnter(msg, name); consumed {
 		return mod, cmd
 	}
@@ -812,12 +812,12 @@ func (m *home) selectionChanged() tea.Cmd {
 		if err := tw.UpdateTerminal(selected); err != nil {
 			return m.handleError(err)
 		}
-	case sel.Kind == ui.SectionTodos:
-		m.contentPane.SetMode(ui.ContentModeTodos)
+	case sel.Kind == ui.SectionBoard:
+		m.contentPane.SetMode(ui.ContentModeBoard)
 		m.menu.SetInstance(nil)
 		m.menu.SetSidebarContext(sel.Kind, sel.IsHeader)
-	case sel.Kind == ui.SectionSchedules:
-		m.contentPane.SetMode(ui.ContentModeSchedules)
+	case sel.Kind == ui.SectionTasks:
+		m.contentPane.SetMode(ui.ContentModeTasks)
 		m.menu.SetInstance(nil)
 		m.menu.SetSidebarContext(sel.Kind, sel.IsHeader)
 	case sel.Kind == ui.SectionHooks:

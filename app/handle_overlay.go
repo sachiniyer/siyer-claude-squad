@@ -2,11 +2,11 @@ package app
 
 import (
 	"fmt"
+	"github.com/sachiniyer/agent-factory/board"
 	"github.com/sachiniyer/agent-factory/keys"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/git"
-	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/ui"
 	"github.com/sachiniyer/agent-factory/ui/overlay"
 
@@ -61,10 +61,10 @@ func (m *home) handleStateLinkInstance(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			if idx >= 0 && idx < len(instances) {
 				inst := instances[idx]
 				kp := m.contentPane.KanbanPane()
-				if board := kp.GetBoard(); board != nil {
-					board.LinkTask(m.linkingTaskID, inst.Title)
-					kp.SetBoard(board) // refresh flat list
-					if err := task.SaveBoard(board); err != nil {
+				if b := kp.GetBoard(); b != nil {
+					b.LinkTask(m.linkingTaskID, inst.Title)
+					kp.SetBoard(b) // refresh flat list
+					if err := board.SaveBoard(b); err != nil {
 						log.ErrorLog.Printf("failed to save board: %v", err)
 					}
 				}
@@ -214,23 +214,23 @@ func (m *home) handleContentPaneFocus(msg tea.KeyMsg) (tea.Model, tea.Cmd, bool)
 		return m, m.showLinkInstanceOverlay(taskID), true
 	}
 
-	// Check if a new schedule was submitted via the inline form
-	sp := m.contentPane.SchedulePane()
+	// Check if a new task was submitted via the inline form
+	sp := m.contentPane.TaskPane()
 	if sp.HasPendingCreate() {
-		return m, m.handleScheduleCreate(), true
+		return m, m.handleTaskCreate(), true
 	}
 	if sp.HasPendingTrigger() {
-		return m, m.handleScheduleTrigger(), true
+		return m, m.handleTaskTrigger(), true
 	}
 
 	return m, nil, true
 }
 
-// handleContentPaneEnter handles Enter/o/a key for focusing content panes (todos/schedules/hooks).
+// handleContentPaneEnter handles Enter/o/a key for focusing content panes (board/tasks/hooks).
 func (m *home) handleContentPaneEnter(msg tea.KeyMsg, name keys.KeyName) (tea.Model, tea.Cmd, bool) {
 	if name == keys.KeyEnter {
 		mode := m.contentPane.GetMode()
-		if mode == ui.ContentModeTodos || mode == ui.ContentModeSchedules || mode == ui.ContentModeHooks {
+		if mode == ui.ContentModeBoard || mode == ui.ContentModeTasks || mode == ui.ContentModeHooks {
 			consumed := m.contentPane.HandleKeyPress(msg)
 			if consumed {
 				return m, nil, true
@@ -239,7 +239,7 @@ func (m *home) handleContentPaneEnter(msg tea.KeyMsg, name keys.KeyName) (tea.Mo
 	}
 
 	// Route 'a' to board when viewing Board section (instead of worktree attach)
-	if name == keys.KeyAttach && m.contentPane.GetMode() == ui.ContentModeTodos {
+	if name == keys.KeyAttach && m.contentPane.GetMode() == ui.ContentModeBoard {
 		consumed := m.contentPane.HandleKeyPress(msg)
 		if consumed {
 			return m, nil, true

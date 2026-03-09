@@ -1,15 +1,15 @@
 package ui
 
 import (
-	"github.com/sachiniyer/agent-factory/task"
+	"github.com/sachiniyer/agent-factory/board"
 	"testing"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/stretchr/testify/assert"
 )
 
-func makeTestBoard() *task.Board {
-	b := &task.Board{Columns: task.DefaultColumns}
+func makeTestBoard() *board.Board {
+	b := &board.Board{Columns: board.DefaultColumns}
 	b.AddTask("Backlog task 1", "backlog")
 	b.AddTask("Backlog task 2", "backlog")
 	b.AddTask("In progress task", "in_progress")
@@ -54,7 +54,7 @@ func TestKanbanPaneNavigation(t *testing.T) {
 
 func TestKanbanPaneAddTask(t *testing.T) {
 	kp := NewKanbanPane()
-	kp.SetBoard(&task.Board{Columns: task.DefaultColumns})
+	kp.SetBoard(&board.Board{Columns: board.DefaultColumns})
 	kp.SetFocus(true)
 
 	// Press 'n' to add
@@ -147,7 +147,7 @@ func TestKanbanPaneNoConsumeWithoutFocus(t *testing.T) {
 
 func TestKanbanPaneJumpToInstance(t *testing.T) {
 	kp := NewKanbanPane()
-	board := &task.Board{Columns: task.DefaultColumns}
+	board := &board.Board{Columns: board.DefaultColumns}
 	tk := board.AddTask("Linked task", "in_progress")
 	board.LinkTask(tk.ID, "my-session")
 	board.AddTask("Unlinked task", "backlog")
@@ -170,7 +170,7 @@ func TestKanbanPaneJumpToInstance(t *testing.T) {
 
 func TestKanbanPaneJumpNoLink(t *testing.T) {
 	kp := NewKanbanPane()
-	board := &task.Board{Columns: task.DefaultColumns}
+	board := &board.Board{Columns: board.DefaultColumns}
 	board.AddTask("Unlinked task", "backlog")
 	kp.SetBoard(board)
 	kp.SetFocus(true)
@@ -185,7 +185,7 @@ func TestKanbanPaneJumpNoLink(t *testing.T) {
 
 func TestKanbanPaneAttachToInstance(t *testing.T) {
 	kp := NewKanbanPane()
-	board := &task.Board{Columns: task.DefaultColumns}
+	board := &board.Board{Columns: board.DefaultColumns}
 	tk := board.AddTask("Linked task", "in_progress")
 	board.LinkTask(tk.ID, "my-session")
 	kp.SetBoard(board)
@@ -207,7 +207,7 @@ func TestKanbanPaneAttachToInstance(t *testing.T) {
 
 func TestKanbanPaneAttachNoLink(t *testing.T) {
 	kp := NewKanbanPane()
-	board := &task.Board{Columns: task.DefaultColumns}
+	board := &board.Board{Columns: board.DefaultColumns}
 	tk := board.AddTask("Unlinked task", "backlog")
 	kp.SetBoard(board)
 	kp.SetFocus(true)
@@ -222,7 +222,7 @@ func TestKanbanPaneAttachNoLink(t *testing.T) {
 func TestKanbanPaneRenderLinkedTask(t *testing.T) {
 	kp := NewKanbanPane()
 	kp.SetSize(80, 30)
-	board := &task.Board{Columns: task.DefaultColumns}
+	board := &board.Board{Columns: board.DefaultColumns}
 	tk := board.AddTask("Auth refactor", "in_progress")
 	board.LinkTask(tk.ID, "refactor-auth")
 	kp.SetBoard(board)

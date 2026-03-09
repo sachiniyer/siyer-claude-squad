@@ -1,4 +1,4 @@
-package schedule
+package task
 
 import (
 	"fmt"

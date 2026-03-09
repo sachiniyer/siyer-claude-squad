@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/session"
 	"testing"
 	"time"
@@ -61,22 +61,22 @@ func TestSidebarNavigation(t *testing.T) {
 	sel = s.GetSelection()
 	assert.Equal(t, 1, sel.ItemIndex)
 
-	// Move down to Schedules header
+	// Move down to Tasks header
 	s.Down()
 	sel = s.GetSelection()
 	assert.True(t, sel.IsHeader)
-	assert.Equal(t, SectionSchedules, sel.Kind)
+	assert.Equal(t, SectionTasks, sel.Kind)
 
-	// Move down to Todos header
+	// Move down to Board header
 	s.Down()
 	sel = s.GetSelection()
 	assert.True(t, sel.IsHeader)
-	assert.Equal(t, SectionTodos, sel.Kind)
+	assert.Equal(t, SectionBoard, sel.Kind)
 
 	// Move back up
 	s.Up()
 	sel = s.GetSelection()
-	assert.Equal(t, SectionSchedules, sel.Kind)
+	assert.Equal(t, SectionTasks, sel.Kind)
 }
 
 func TestSidebarExpandCollapse(t *testing.T) {
@@ -134,11 +134,11 @@ func TestSidebarJumpSections(t *testing.T) {
 	// Jump to next section
 	s.JumpNextSection()
 	sel = s.GetSelection()
-	assert.Equal(t, SectionSchedules, sel.Kind)
+	assert.Equal(t, SectionTasks, sel.Kind)
 
 	s.JumpNextSection()
 	sel = s.GetSelection()
-	assert.Equal(t, SectionTodos, sel.Kind)
+	assert.Equal(t, SectionBoard, sel.Kind)
 
 	s.JumpNextSection()
 	sel = s.GetSelection()
@@ -155,7 +155,7 @@ func TestSidebarJumpSections(t *testing.T) {
 
 	s.JumpPrevSection()
 	sel = s.GetSelection()
-	assert.Equal(t, SectionTodos, sel.Kind)
+	assert.Equal(t, SectionBoard, sel.Kind)
 }
 
 func TestSidebarCollapseFromChild(t *testing.T) {
@@ -221,17 +221,17 @@ func TestSidebarSelectInstance(t *testing.T) {
 	assert.Equal(t, "first", selected.Title)
 }
 
-func TestSidebarScheduleData(t *testing.T) {
+func TestSidebarTaskData(t *testing.T) {
 	spin := spinner.New(spinner.WithSpinner(spinner.MiniDot))
 	s := NewSidebar(&spin, false)
 
-	schedules := []schedule.Schedule{
+	tasks := []task.Task{
 		{ID: "1", Prompt: "backup", CronExpr: "0 0 * * *", Enabled: true, CreatedAt: time.Now()},
 		{ID: "2", Prompt: "health check", CronExpr: "*/5 * * * *", Enabled: false, CreatedAt: time.Now()},
 	}
-	s.SetSchedules(schedules)
+	s.SetTasks(tasks)
 
-	result := s.GetSchedules()
+	result := s.GetTasks()
 	assert.Len(t, result, 2)
 }
 

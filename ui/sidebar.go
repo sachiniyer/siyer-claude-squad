@@ -3,8 +3,8 @@ package ui
 import (
 	"fmt"
 	"github.com/sachiniyer/agent-factory/log"
-	"github.com/sachiniyer/agent-factory/schedule"
 	"github.com/sachiniyer/agent-factory/session"
+	"github.com/sachiniyer/agent-factory/task"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -17,8 +17,8 @@ type SidebarSectionKind int
 
 const (
 	SectionInstances SidebarSectionKind = iota
-	SectionSchedules
-	SectionTodos
+	SectionTasks
+	SectionBoard
 	SectionHooks
 	SectionMicroClaw
 )
@@ -27,7 +27,7 @@ const (
 type SidebarItem struct {
 	Kind      SidebarSectionKind
 	IsHeader  bool
-	ItemIndex int // index within the section's children (instances/schedules)
+	ItemIndex int // index within the section's children (instances/tasks)
 }
 
 // SidebarSection holds state for one collapsible section.
@@ -54,7 +54,7 @@ type Sidebar struct {
 
 	// Data
 	instances []*session.Instance
-	schedules []schedule.Schedule
+	tasks     []task.Task
 	taskCount int
 	hookCount int
 	hasMC     bool // microclaw available
@@ -72,8 +72,8 @@ func NewSidebar(spin *spinner.Model, autoYes bool) *Sidebar {
 	s := &Sidebar{
 		sections: []SidebarSection{
 			{Kind: SectionInstances, Title: "Instances", Expanded: true},
-			{Kind: SectionSchedules, Title: "Schedules", Expanded: false},
-			{Kind: SectionTodos, Title: "Board", Expanded: false},
+			{Kind: SectionTasks, Title: "Tasks", Expanded: false},
+			{Kind: SectionBoard, Title: "Board", Expanded: false},
 			{Kind: SectionHooks, Title: "Hooks", Expanded: false},
 			{Kind: SectionMicroClaw, Title: "MicroClaw", Expanded: false},
 		},
@@ -106,9 +106,9 @@ func (s *Sidebar) SetSessionPreviewSize(width, height int) error {
 	return err
 }
 
-// SetSchedules updates the schedule data.
-func (s *Sidebar) SetSchedules(schedules []schedule.Schedule) {
-	s.schedules = schedules
+// SetTasks updates the task data.
+func (s *Sidebar) SetTasks(tasks []task.Task) {
+	s.tasks = tasks
 	s.rebuildVisibleItems()
 }
 
@@ -130,9 +130,9 @@ func (s *Sidebar) SetMicroClawAvailable(available bool) {
 	s.rebuildVisibleItems()
 }
 
-// GetSchedules returns the current schedules.
-func (s *Sidebar) GetSchedules() []schedule.Schedule {
-	return s.schedules
+// GetTasks returns the current tasks.
+func (s *Sidebar) GetTasks() []task.Task {
+	return s.tasks
 }
 
 // rebuildVisibleItems rebuilds the flat list of visible items based on expand/collapse state.
@@ -434,10 +434,10 @@ func (s *Sidebar) renderHeader(kind SidebarSectionKind, selected bool) string {
 	switch kind {
 	case SectionInstances:
 		label = fmt.Sprintf("Instances (%d)", len(s.instances))
-	case SectionSchedules:
-		label = fmt.Sprintf("Schedules (%d)", len(s.schedules))
+	case SectionTasks:
+		label = fmt.Sprintf("Tasks (%d)", len(s.tasks))
 		arrow = "  " // no expand arrow for leaf sections
-	case SectionTodos:
+	case SectionBoard:
 		if s.taskCount > 0 {
 			label = fmt.Sprintf("Board (%d)", s.taskCount)
 		} else {

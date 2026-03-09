@@ -1,4 +1,4 @@
-package schedule
+package task
 
 import (
 	"fmt"
@@ -19,30 +19,30 @@ var (
 	programFlag string
 )
 
-// ScheduleCmd is the parent command for schedule management
-var ScheduleCmd = &cobra.Command{
-	Use:   "schedule",
-	Short: "Manage scheduled tasks",
-	Long:  "Create, list, and manage recurring scheduled tasks that run automatically.",
+// TaskCmd is the parent command for task management
+var TaskCmd = &cobra.Command{
+	Use:   "task",
+	Short: "Manage automated tasks",
+	Long:  "Create, list, and manage recurring automated tasks that run automatically.",
 }
 
 var listCmd = &cobra.Command{
 	Use:   "list",
-	Short: "List all scheduled tasks",
+	Short: "List all automated tasks",
 	RunE: func(cmd *cobra.Command, args []string) error {
-		schedules, err := LoadSchedules()
+		tasks, err := LoadTasks()
 		if err != nil {
-			return fmt.Errorf("failed to load schedules: %w", err)
+			return fmt.Errorf("failed to load tasks: %w", err)
 		}
 
-		if len(schedules) == 0 {
-			fmt.Println("No schedules found.")
+		if len(tasks) == 0 {
+			fmt.Println("No tasks found.")
 			return nil
 		}
 
 		w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
 		fmt.Fprintln(w, "ID\tNAME\tENABLED\tCRON\tPROGRAM\tPATH\tLAST_RUN\tSTATUS")
-		for _, s := range schedules {
+		for _, s := range tasks {
 			lastRun := "never"
 			if s.LastRunAt != nil {
 				lastRun = s.LastRunAt.Format(time.RFC822)
@@ -57,7 +57,7 @@ var listCmd = &cobra.Command{
 
 var addCmd = &cobra.Command{
 	Use:   "add",
-	Short: "Add a new scheduled task",
+	Short: "Add a new automated task",
 	RunE: func(cmd *cobra.Command, args []string) error {
 		if err := ValidateCronExpr(cronFlag); err != nil {
 			return fmt.Errorf("invalid cron expression: %w", err)
@@ -74,7 +74,7 @@ var addCmd = &cobra.Command{
 		}
 
 		id := GenerateID()
-		s := Schedule{
+		s := Task{
 			ID:          id,
 			Name:        nameFlag,
 			Prompt:      promptFlag,
@@ -85,53 +85,53 @@ var addCmd = &cobra.Command{
 			CreatedAt:   time.Now(),
 		}
 
-		if err := AddSchedule(s); err != nil {
-			return fmt.Errorf("failed to add schedule: %w", err)
+		if err := AddTask(s); err != nil {
+			return fmt.Errorf("failed to add task: %w", err)
 		}
 
 		if err := InstallSystemdTimer(s); err != nil {
 			return fmt.Errorf("failed to install systemd timer: %w", err)
 		}
 
-		fmt.Printf("Schedule added successfully (ID: %s)\n", id)
+		fmt.Printf("Task added successfully (ID: %s)\n", id)
 		return nil
 	},
 }
 
 var removeCmd = &cobra.Command{
 	Use:   "remove",
-	Short: "Remove a scheduled task",
+	Short: "Remove an automated task",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		s, err := GetSchedule(args[0])
+		s, err := GetTask(args[0])
 		if err != nil {
-			return fmt.Errorf("failed to get schedule: %w", err)
+			return fmt.Errorf("failed to get task: %w", err)
 		}
 
 		if err := RemoveSystemdTimer(*s); err != nil {
 			return fmt.Errorf("failed to remove systemd timer: %w", err)
 		}
 
-		if err := RemoveSchedule(args[0]); err != nil {
-			return fmt.Errorf("failed to remove schedule: %w", err)
+		if err := RemoveTask(args[0]); err != nil {
+			return fmt.Errorf("failed to remove task: %w", err)
 		}
 
-		fmt.Printf("Schedule removed successfully (ID: %s)\n", args[0])
+		fmt.Printf("Task removed successfully (ID: %s)\n", args[0])
 		return nil
 	},
 }
 
 var runCmd = &cobra.Command{
 	Use:   "run",
-	Short: "Run a scheduled task (called by systemd)",
+	Short: "Run an automated task (called by systemd)",
 	Args:  cobra.ExactArgs(1),
 	RunE: func(cmd *cobra.Command, args []string) error {
-		return RunScheduledTask(args[0])
+		return RunTask(args[0])
 	},
 }
 
 func init() {
-	addCmd.Flags().StringVar(&nameFlag, "name", "", "Schedule name")
+	addCmd.Flags().StringVar(&nameFlag, "name", "", "Task name")
 	addCmd.Flags().StringVar(&promptFlag, "prompt", "", "Prompt to send to the AI agent (required)")
 	addCmd.Flags().StringVar(&cronFlag, "cron", "", "Cron expression for scheduling (required)")
 	addCmd.Flags().StringVar(&pathFlag, "path", ".", "Project path (defaults to current directory)")
@@ -139,8 +139,8 @@ func init() {
 	addCmd.MarkFlagRequired("prompt")
 	addCmd.MarkFlagRequired("cron")
 
-	ScheduleCmd.AddCommand(listCmd)
-	ScheduleCmd.AddCommand(addCmd)
-	ScheduleCmd.AddCommand(removeCmd)
-	ScheduleCmd.AddCommand(runCmd)
+	TaskCmd.AddCommand(listCmd)
+	TaskCmd.AddCommand(addCmd)
+	TaskCmd.AddCommand(removeCmd)
+	TaskCmd.AddCommand(runCmd)
 }

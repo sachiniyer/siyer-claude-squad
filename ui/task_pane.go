@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/task"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"
@@ -11,9 +11,9 @@ import (
 	"github.com/charmbracelet/lipgloss"
 )
 
-// SchedulePane renders an inline schedule editor in the right pane.
-type SchedulePane struct {
-	schedules   []schedule.Schedule
+// TaskPane renders an inline task editor in the right pane.
+type TaskPane struct {
+	tasks       []task.Task
 	selectedIdx int
 
 	// Edit mode
@@ -32,54 +32,54 @@ type SchedulePane struct {
 
 	width, height int
 	dirty         bool
-	deleted       []schedule.Schedule
+	deleted       []task.Task
 	hasFocus      bool
 }
 
-// NewSchedulePane creates a new schedule pane.
-func NewSchedulePane() *SchedulePane {
-	return &SchedulePane{}
+// NewTaskPane creates a new task pane.
+func NewTaskPane() *TaskPane {
+	return &TaskPane{}
 }
 
 // SetSize sets the display dimensions.
-func (s *SchedulePane) SetSize(width, height int) {
+func (s *TaskPane) SetSize(width, height int) {
 	s.width = width
 	s.height = height
 }
 
-// SetSchedules sets the schedule data.
-func (s *SchedulePane) SetSchedules(schedules []schedule.Schedule) {
-	s.schedules = schedules
+// SetTasks sets the task data.
+func (s *TaskPane) SetTasks(tasks []task.Task) {
+	s.tasks = tasks
 	s.dirty = false
 	s.deleted = nil
 	s.editing = false
-	if s.selectedIdx >= len(s.schedules) && s.selectedIdx > 0 {
-		s.selectedIdx = len(s.schedules) - 1
+	if s.selectedIdx >= len(s.tasks) && s.selectedIdx > 0 {
+		s.selectedIdx = len(s.tasks) - 1
 	}
 }
 
-// GetSchedules returns the current schedules.
-func (s *SchedulePane) GetSchedules() []schedule.Schedule {
-	return s.schedules
+// GetTasks returns the current tasks.
+func (s *TaskPane) GetTasks() []task.Task {
+	return s.tasks
 }
 
-// GetDeleted returns deleted schedules for cleanup.
-func (s *SchedulePane) GetDeleted() []schedule.Schedule {
+// GetDeleted returns deleted tasks for cleanup.
+func (s *TaskPane) GetDeleted() []task.Task {
 	return s.deleted
 }
 
-// IsDirty returns true if schedules were modified.
-func (s *SchedulePane) IsDirty() bool {
+// IsDirty returns true if tasks were modified.
+func (s *TaskPane) IsDirty() bool {
 	return s.dirty
 }
 
 // HasFocus returns whether the pane has input focus.
-func (s *SchedulePane) HasFocus() bool {
+func (s *TaskPane) HasFocus() bool {
 	return s.hasFocus
 }
 
 // SetFocus sets the focus state.
-func (s *SchedulePane) SetFocus(focus bool) {
+func (s *TaskPane) SetFocus(focus bool) {
 	s.hasFocus = focus
 	if !focus {
 		s.editing = false
@@ -88,21 +88,21 @@ func (s *SchedulePane) SetFocus(focus bool) {
 }
 
 // IsEditing returns true if in edit mode.
-func (s *SchedulePane) IsEditing() bool {
+func (s *TaskPane) IsEditing() bool {
 	return s.editing
 }
 
 // IsCreating returns true if in create mode.
-func (s *SchedulePane) IsCreating() bool {
+func (s *TaskPane) IsCreating() bool {
 	return s.creating
 }
 
-// EnterCreateMode initializes empty edit fields for creating a new schedule.
-func (s *SchedulePane) EnterCreateMode(defaultPath string) {
+// EnterCreateMode initializes empty edit fields for creating a new task.
+func (s *TaskPane) EnterCreateMode(defaultPath string) {
 	s.createPath = defaultPath
 
 	name := textinput.New()
-	name.Placeholder = "Schedule name"
+	name.Placeholder = "Task name"
 	name.CharLimit = 64
 	name.Focus()
 
@@ -134,41 +134,41 @@ func (s *SchedulePane) EnterCreateMode(defaultPath string) {
 	s.hasFocus = true
 }
 
-// HasPendingCreate returns true if a new schedule was submitted and needs saving.
-func (s *SchedulePane) HasPendingCreate() bool {
+// HasPendingCreate returns true if a new task was submitted and needs saving.
+func (s *TaskPane) HasPendingCreate() bool {
 	return s.pendingCreate
 }
 
 // ConsumePendingCreate returns the submitted create data and clears the pending flag.
-func (s *SchedulePane) ConsumePendingCreate() (name, prompt, cron, path string) {
+func (s *TaskPane) ConsumePendingCreate() (name, prompt, cron, path string) {
 	s.pendingCreate = false
 	return s.editName.Value(), s.editPrompt.Value(), s.editCron.Value(), s.editPath.Value()
 }
 
-// SetPendingTrigger marks the currently selected schedule to be triggered.
-func (s *SchedulePane) SetPendingTrigger() {
-	if len(s.schedules) > 0 {
+// SetPendingTrigger marks the currently selected task to be triggered.
+func (s *TaskPane) SetPendingTrigger() {
+	if len(s.tasks) > 0 {
 		s.pendingTrigger = true
 	}
 }
 
-// HasPendingTrigger returns true if a schedule was triggered to run immediately.
-func (s *SchedulePane) HasPendingTrigger() bool {
+// HasPendingTrigger returns true if a task was triggered to run immediately.
+func (s *TaskPane) HasPendingTrigger() bool {
 	return s.pendingTrigger
 }
 
-// ConsumePendingTrigger returns the triggered schedule and clears the flag.
-func (s *SchedulePane) ConsumePendingTrigger() *schedule.Schedule {
+// ConsumePendingTrigger returns the triggered task and clears the flag.
+func (s *TaskPane) ConsumePendingTrigger() *task.Task {
 	s.pendingTrigger = false
-	if s.selectedIdx < len(s.schedules) {
-		sched := s.schedules[s.selectedIdx]
-		return &sched
+	if s.selectedIdx < len(s.tasks) {
+		tsk := s.tasks[s.selectedIdx]
+		return &tsk
 	}
 	return nil
 }
 
 // HandleKeyPress processes a key press. Returns true if consumed.
-func (s *SchedulePane) HandleKeyPress(msg tea.KeyMsg) bool {
+func (s *TaskPane) HandleKeyPress(msg tea.KeyMsg) bool {
 	if !s.hasFocus {
 		return false
 	}
@@ -178,7 +178,7 @@ func (s *SchedulePane) HandleKeyPress(msg tea.KeyMsg) bool {
 	return s.handleNormalMode(msg)
 }
 
-func (s *SchedulePane) handleNormalMode(msg tea.KeyMsg) bool {
+func (s *TaskPane) handleNormalMode(msg tea.KeyMsg) bool {
 	switch msg.String() {
 	case "esc":
 		s.hasFocus = false
@@ -189,34 +189,34 @@ func (s *SchedulePane) handleNormalMode(msg tea.KeyMsg) bool {
 		}
 		return true
 	case "down", "j":
-		if s.selectedIdx < len(s.schedules)-1 {
+		if s.selectedIdx < len(s.tasks)-1 {
 			s.selectedIdx++
 		}
 		return true
 	case "x":
-		if len(s.schedules) > 0 {
-			s.schedules[s.selectedIdx].Enabled = !s.schedules[s.selectedIdx].Enabled
+		if len(s.tasks) > 0 {
+			s.tasks[s.selectedIdx].Enabled = !s.tasks[s.selectedIdx].Enabled
 			s.dirty = true
 		}
 		return true
 	case "D":
-		if len(s.schedules) > 0 {
-			deleted := s.schedules[s.selectedIdx]
+		if len(s.tasks) > 0 {
+			deleted := s.tasks[s.selectedIdx]
 			s.deleted = append(s.deleted, deleted)
-			s.schedules = append(s.schedules[:s.selectedIdx], s.schedules[s.selectedIdx+1:]...)
+			s.tasks = append(s.tasks[:s.selectedIdx], s.tasks[s.selectedIdx+1:]...)
 			s.dirty = true
-			if s.selectedIdx >= len(s.schedules) && s.selectedIdx > 0 {
+			if s.selectedIdx >= len(s.tasks) && s.selectedIdx > 0 {
 				s.selectedIdx--
 			}
 		}
 		return true
 	case "enter":
-		if len(s.schedules) > 0 {
+		if len(s.tasks) > 0 {
 			s.enterEditMode()
 		}
 		return true
 	case "r":
-		if len(s.schedules) > 0 {
+		if len(s.tasks) > 0 {
 			s.pendingTrigger = true
 		}
 		return true
@@ -227,11 +227,11 @@ func (s *SchedulePane) handleNormalMode(msg tea.KeyMsg) bool {
 	return true
 }
 
-func (s *SchedulePane) enterEditMode() {
-	sched := s.schedules[s.selectedIdx]
+func (s *TaskPane) enterEditMode() {
+	tsk := s.tasks[s.selectedIdx]
 
 	name := textinput.New()
-	name.SetValue(sched.Name)
+	name.SetValue(tsk.Name)
 	name.CharLimit = 64
 	name.Focus()
 
@@ -242,15 +242,15 @@ func (s *SchedulePane) enterEditMode() {
 	prompt.FocusedStyle.CursorLine = lipgloss.NewStyle()
 	prompt.CharLimit = 0
 	prompt.MaxHeight = 0
-	prompt.SetValue(sched.Prompt)
+	prompt.SetValue(tsk.Prompt)
 
 	cron := textinput.New()
-	cron.SetValue(sched.CronExpr)
+	cron.SetValue(tsk.CronExpr)
 	cron.CharLimit = 64
 	cron.Blur()
 
 	path := textinput.New()
-	path.SetValue(sched.ProjectPath)
+	path.SetValue(tsk.ProjectPath)
 	path.CharLimit = 256
 	path.Blur()
 
@@ -262,7 +262,7 @@ func (s *SchedulePane) enterEditMode() {
 	s.editing = true
 }
 
-func (s *SchedulePane) handleEditMode(msg tea.KeyMsg) bool {
+func (s *TaskPane) handleEditMode(msg tea.KeyMsg) bool {
 	switch msg.Type {
 	case tea.KeyTab:
 		s.focusIndex = (s.focusIndex + 1) % 5
@@ -282,10 +282,10 @@ func (s *SchedulePane) handleEditMode(msg tea.KeyMsg) bool {
 				s.pendingCreate = true
 				s.creating = false
 			} else {
-				s.schedules[s.selectedIdx].Name = s.editName.Value()
-				s.schedules[s.selectedIdx].Prompt = s.editPrompt.Value()
-				s.schedules[s.selectedIdx].CronExpr = s.editCron.Value()
-				s.schedules[s.selectedIdx].ProjectPath = s.editPath.Value()
+				s.tasks[s.selectedIdx].Name = s.editName.Value()
+				s.tasks[s.selectedIdx].Prompt = s.editPrompt.Value()
+				s.tasks[s.selectedIdx].CronExpr = s.editCron.Value()
+				s.tasks[s.selectedIdx].ProjectPath = s.editPath.Value()
 				s.dirty = true
 				s.editing = false
 			}
@@ -309,7 +309,7 @@ func (s *SchedulePane) handleEditMode(msg tea.KeyMsg) bool {
 	return true
 }
 
-func (s *SchedulePane) updateEditFocus() {
+func (s *TaskPane) updateEditFocus() {
 	s.editName.Blur()
 	s.editPrompt.Blur()
 	s.editCron.Blur()
@@ -327,15 +327,15 @@ func (s *SchedulePane) updateEditFocus() {
 	}
 }
 
-// String renders the schedule pane.
-func (s *SchedulePane) String() string {
+// String renders the task pane.
+func (s *TaskPane) String() string {
 	if s.editing || s.creating {
 		return s.renderEditMode()
 	}
 	return s.renderListMode()
 }
 
-func (s *SchedulePane) renderListMode() string {
+func (s *TaskPane) renderListMode() string {
 	tStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#7D56F4"))
 	selectedStyle := lipgloss.NewStyle().Bold(true).Foreground(lipgloss.Color("#FFCC00"))
 	enabledStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#36CFC9"))
@@ -346,11 +346,11 @@ func (s *SchedulePane) renderListMode() string {
 	sepLineStyle := lipgloss.NewStyle().Foreground(lipgloss.Color("#3C3C3C"))
 
 	var b strings.Builder
-	b.WriteString(tStyle.Render("Scheduled Tasks"))
+	b.WriteString(tStyle.Render("Tasks"))
 	b.WriteString("\n\n")
 
-	if len(s.schedules) == 0 {
-		b.WriteString(disabledStyle.Render("  No schedules. Press s to create one."))
+	if len(s.tasks) == 0 {
+		b.WriteString(disabledStyle.Render("  No tasks. Press s to create one."))
 		b.WriteString("\n")
 	}
 
@@ -360,26 +360,26 @@ func (s *SchedulePane) renderListMode() string {
 		wrapWidth = 20
 	}
 
-	for i, sched := range s.schedules {
+	for i, tsk := range s.tasks {
 		if i > 0 {
-			// Visual separator between schedules
+			// Visual separator between tasks
 			sep := strings.Repeat("─", wrapWidth)
 			b.WriteString("  " + sepLineStyle.Render(sep) + "\n")
 		}
 
 		status := "[✓]"
 		style := enabledStyle
-		if !sched.Enabled {
+		if !tsk.Enabled {
 			status = "[✗]"
 			style = disabledStyle
 		}
 
 		isSelected := i == s.selectedIdx
 		var header string
-		if sched.Name != "" {
-			header = fmt.Sprintf("%s %s  %s", status, sched.Name, sched.CronExpr)
+		if tsk.Name != "" {
+			header = fmt.Sprintf("%s %s  %s", status, tsk.Name, tsk.CronExpr)
 		} else {
-			header = fmt.Sprintf("%s %s", status, sched.CronExpr)
+			header = fmt.Sprintf("%s %s", status, tsk.CronExpr)
 		}
 
 		if isSelected && s.hasFocus {
@@ -390,7 +390,7 @@ func (s *SchedulePane) renderListMode() string {
 		b.WriteString("\n")
 
 		// Full prompt text, word-wrapped
-		wrapped := schedPaneWordWrap(sched.Prompt, wrapWidth)
+		wrapped := taskPaneWordWrap(tsk.Prompt, wrapWidth)
 		for _, line := range wrapped {
 			b.WriteString(promptStyle.Render("    " + line))
 			b.WriteString("\n")
@@ -398,12 +398,12 @@ func (s *SchedulePane) renderListMode() string {
 
 		// Program and last run info for all items
 		lastRun := "never"
-		if sched.LastRunAt != nil {
-			lastRun = sched.LastRunAt.Format("Jan 02 15:04")
+		if tsk.LastRunAt != nil {
+			lastRun = tsk.LastRunAt.Format("Jan 02 15:04")
 		}
-		detail := fmt.Sprintf("    %s • last: %s", sched.Program, lastRun)
-		if sched.LastRunStatus != "" {
-			detail += " (" + sched.LastRunStatus + ")"
+		detail := fmt.Sprintf("    %s • last: %s", tsk.Program, lastRun)
+		if tsk.LastRunStatus != "" {
+			detail += " (" + tsk.LastRunStatus + ")"
 		}
 		b.WriteString(detailStyle.Render(detail))
 		b.WriteString("\n")
@@ -413,13 +413,13 @@ func (s *SchedulePane) renderListMode() string {
 	if s.hasFocus {
 		b.WriteString(hintStyle.Render("n new • enter edit • r run now • x toggle • D delete • esc back"))
 	} else {
-		b.WriteString(hintStyle.Render("enter to focus and edit schedules"))
+		b.WriteString(hintStyle.Render("enter to focus and edit tasks"))
 	}
 
 	return b.String()
 }
 
-func (s *SchedulePane) renderEditMode() string {
+func (s *TaskPane) renderEditMode() string {
 	editTitleStyle := lipgloss.NewStyle().
 		Foreground(lipgloss.Color("62")).
 		Bold(true).
@@ -446,10 +446,10 @@ func (s *SchedulePane) renderEditMode() string {
 
 	var b strings.Builder
 	if s.creating {
-		b.WriteString(editTitleStyle.Render("New Schedule"))
+		b.WriteString(editTitleStyle.Render("New Task"))
 	} else {
-		sched := s.schedules[s.selectedIdx]
-		b.WriteString(editTitleStyle.Render(fmt.Sprintf("Edit Schedule %s", sched.ID)))
+		tsk := s.tasks[s.selectedIdx]
+		b.WriteString(editTitleStyle.Render(fmt.Sprintf("Edit Task %s", tsk.ID)))
 	}
 	b.WriteString("\n")
 	b.WriteString(labelStyle.Render("Name:"))
@@ -471,7 +471,7 @@ func (s *SchedulePane) renderEditMode() string {
 
 	submitLabel := " Save "
 	if s.creating {
-		submitLabel = " Schedule "
+		submitLabel = " Create "
 	}
 	if s.focusIndex == 4 {
 		b.WriteString("       " + focusedButtonStyle.Render(submitLabel))
@@ -482,8 +482,8 @@ func (s *SchedulePane) renderEditMode() string {
 	return b.String()
 }
 
-// schedPaneWordWrap wraps text to fit within maxWidth, breaking on word boundaries.
-func schedPaneWordWrap(text string, maxWidth int) []string {
+// taskPaneWordWrap wraps text to fit within maxWidth, breaking on word boundaries.
+func taskPaneWordWrap(text string, maxWidth int) []string {
 	if maxWidth <= 0 {
 		return []string{text}
 	}

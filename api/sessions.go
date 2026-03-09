@@ -8,7 +8,7 @@ import (
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/daemon"
 	"github.com/sachiniyer/agent-factory/log"
-	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/board"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/git"
 	"github.com/sachiniyer/agent-factory/task"
@@ -120,13 +120,13 @@ var sessionsCreateCmd = &cobra.Command{
 		}
 
 		if createPromptFlag != "" {
-			if err := schedule.WaitForReady(instance); err != nil {
+			if err := task.WaitForReady(instance); err != nil {
 				return jsonError(fmt.Errorf("program did not become ready: %w", err))
 			}
 
 			if instance.CheckAndHandleTrustPrompt() {
 				time.Sleep(1 * time.Second)
-				if err := schedule.WaitForReady(instance); err != nil {
+				if err := task.WaitForReady(instance); err != nil {
 					return jsonError(fmt.Errorf("program did not become ready after trust prompt: %w", err))
 				}
 			}
@@ -272,11 +272,11 @@ var sessionsKillCmd = &cobra.Command{
 		}
 
 		// Auto-move linked board task to "done"
-		board, boardErr := task.LoadBoard()
+		b, boardErr := board.LoadBoard()
 		if boardErr == nil {
-			if linkedTask := board.FindTaskByInstance(args[0]); linkedTask != nil {
-				if err := board.MoveTask(linkedTask.ID, "done"); err == nil {
-					if err := task.SaveBoard(board); err != nil {
+			if linkedTask := b.FindTaskByInstance(args[0]); linkedTask != nil {
+				if err := b.MoveTask(linkedTask.ID, "done"); err == nil {
+					if err := board.SaveBoard(b); err != nil {
 						log.ErrorLog.Printf("failed to save board after moving task to done: %v", err)
 					}
 				}

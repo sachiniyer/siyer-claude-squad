@@ -1,4 +1,4 @@
-package schedule
+package task
 
 import (
 	"encoding/json"
@@ -8,12 +8,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/sachiniyer/agent-factory/board"
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/daemon"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/git"
-	"github.com/sachiniyer/agent-factory/task"
 )
 
 const pendingInstancesFileName = "pending_instances.json"
@@ -50,7 +50,7 @@ func appendPendingInstance(data session.InstanceData) error {
 	return os.WriteFile(path, out, 0644)
 }
 
-// LoadAndClearPendingInstances reads pending instances written by scheduled runs
+// LoadAndClearPendingInstances reads pending instances written by task runs
 // and removes the file. The TUI should call this at startup to merge them in.
 func LoadAndClearPendingInstances() ([]session.InstanceData, error) {
 	path, err := getPendingInstancesPath()
@@ -78,7 +78,7 @@ func LoadAndClearPendingInstances() ([]session.InstanceData, error) {
 }
 
 // WaitForReady polls the instance's tmux pane until the program shows its
-// input prompt (e.g. Claude Code's "❯" prompt) or trust prompt, or times out after 60 seconds.
+// input prompt (e.g. Claude Code's ">" prompt) or trust prompt, or times out after 60 seconds.
 func WaitForReady(instance *session.Instance) error {
 	timeout := time.After(60 * time.Second)
 	ticker := time.NewTicker(500 * time.Millisecond)
@@ -106,9 +106,9 @@ func WaitForReady(instance *session.Instance) error {
 	}
 }
 
-// RunScheduledTask executes a scheduled task by creating a new instance,
+// RunTask executes a task by creating a new instance,
 // sending the prompt, and registering it in the application state.
-func RunScheduledTask(scheduleID string) error {
+func RunTask(taskID string) error {
 	log.Initialize(false)
 	defer log.Close()
 
@@ -121,37 +121,37 @@ func RunScheduledTask(scheduleID string) error {
 	if err := os.MkdirAll(lockDir, 0755); err != nil {
 		return fmt.Errorf("failed to create lock directory: %w", err)
 	}
-	lockPath := filepath.Join(lockDir, "schedule-"+scheduleID+".lock")
+	lockPath := filepath.Join(lockDir, "task-"+taskID+".lock")
 	lockFile, err := os.OpenFile(lockPath, os.O_CREATE|os.O_EXCL|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("another run is already active for schedule %s: %w", scheduleID, err)
+		return fmt.Errorf("another run is already active for task %s: %w", taskID, err)
 	}
 	defer os.Remove(lockPath)
 	defer lockFile.Close()
 
-	// Load the schedule.
-	s, err := GetSchedule(scheduleID)
+	// Load the task.
+	t, err := GetTask(taskID)
 	if err != nil {
-		return fmt.Errorf("failed to load schedule: %w", err)
+		return fmt.Errorf("failed to load task: %w", err)
 	}
 
-	if !s.Enabled {
-		return fmt.Errorf("schedule %s is disabled", scheduleID)
+	if !t.Enabled {
+		return fmt.Errorf("task %s is disabled", taskID)
 	}
 
 	// Validate project path.
-	if !git.IsGitRepo(s.ProjectPath) {
-		return fmt.Errorf("project path %s is not a valid git repository", s.ProjectPath)
+	if !git.IsGitRepo(t.ProjectPath) {
+		return fmt.Errorf("project path %s is not a valid git repository", t.ProjectPath)
 	}
 
 	cfg := config.LoadConfig()
 
-	title := fmt.Sprintf("sched-%s-%s", s.ID, time.Now().Format("20060102-150405"))
+	title := fmt.Sprintf("task-%s-%s", t.ID, time.Now().Format("20060102-150405"))
 
 	instance, err := session.NewInstance(session.InstanceOptions{
 		Title:   title,
-		Path:    s.ProjectPath,
-		Program: s.Program,
+		Path:    t.ProjectPath,
+		Program: t.Program,
 	})
 	if err != nil {
 		return fmt.Errorf("failed to create instance: %w", err)
@@ -187,8 +187,8 @@ func RunScheduledTask(scheduleID string) error {
 	}
 
 	// Use SendPromptCommand (tmux send-keys) instead of SendPrompt (PTY write)
-	// for reliability in headless/scheduled runs.
-	if err := instance.SendPromptCommand(s.Prompt); err != nil {
+	// for reliability in headless/task runs.
+	if err := instance.SendPromptCommand(t.Prompt); err != nil {
 		return fmt.Errorf("failed to send prompt: %w", err)
 	}
 
@@ -202,17 +202,17 @@ func RunScheduledTask(scheduleID string) error {
 	}
 
 	// Create a board task linked to the new instance.
-	repo, repoErr := config.RepoFromPath(s.ProjectPath)
+	repo, repoErr := config.RepoFromPath(t.ProjectPath)
 	if repoErr == nil {
-		board, boardErr := task.LoadBoardForRepo(repo)
+		b, boardErr := board.LoadBoardForRepo(repo)
 		if boardErr == nil {
-			taskTitle := s.Name
+			taskTitle := t.Name
 			if taskTitle == "" {
 				taskTitle = title
 			}
-			t := board.AddTask(taskTitle, "in_progress")
-			board.LinkTask(t.ID, title)
-			if err := task.SaveBoardForRepo(repo, board); err != nil {
+			bt := b.AddTask(taskTitle, "in_progress")
+			b.LinkTask(bt.ID, title)
+			if err := board.SaveBoardForRepo(repo, b); err != nil {
 				log.ErrorLog.Printf("failed to save board task: %v", err)
 			}
 		}
@@ -226,14 +226,14 @@ func RunScheduledTask(scheduleID string) error {
 		}
 	}
 
-	// Update schedule status.
+	// Update task status.
 	now := time.Now()
-	s.LastRunAt = &now
-	s.LastRunStatus = "started"
-	if err := UpdateSchedule(*s); err != nil {
-		log.ErrorLog.Printf("failed to update schedule status: %v", err)
+	t.LastRunAt = &now
+	t.LastRunStatus = "started"
+	if err := UpdateTask(*t); err != nil {
+		log.ErrorLog.Printf("failed to update task status: %v", err)
 	}
 
-	log.InfoLog.Printf("scheduled task %s started successfully as instance %s", scheduleID, title)
+	log.InfoLog.Printf("task %s started successfully as instance %s", taskID, title)
 	return nil
 }

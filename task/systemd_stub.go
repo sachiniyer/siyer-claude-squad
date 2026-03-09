@@ -1,13 +1,13 @@
 //go:build !linux
 
-package schedule
+package task
 
 import "fmt"
 
-func InstallSystemdTimer(s Schedule) error {
+func InstallSystemdTimer(t Task) error {
 	return fmt.Errorf("systemd timers are only supported on Linux")
 }
 
-func RemoveSystemdTimer(s Schedule) error {
+func RemoveSystemdTimer(t Task) error {
 	return fmt.Errorf("systemd timers are only supported on Linux")
 }

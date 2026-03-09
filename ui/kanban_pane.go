@@ -2,7 +2,7 @@ package ui
 
 import (
 	"fmt"
-	"github.com/sachiniyer/agent-factory/task"
+	"github.com/sachiniyer/agent-factory/board"
 	"strings"
 	"time"
 
@@ -19,14 +19,14 @@ type flatItem struct {
 
 // KanbanPane renders an interactive kanban board inline in the right pane.
 type KanbanPane struct {
-	board       *task.Board
+	board       *board.Board
 	flat        []flatItem
 	selectedIdx int
 	editing     bool
 	editBuffer  string
 	adding      bool
 	carrying    bool
-	carriedTask *task.Task
+	carriedTask *board.Task
 	carriedFrom string
 	width       int
 	height      int
@@ -43,7 +43,7 @@ type KanbanPane struct {
 func NewKanbanPane() *KanbanPane { return &KanbanPane{} }
 
 func (k *KanbanPane) SetSize(width, height int) { k.width = width; k.height = height }
-func (k *KanbanPane) GetBoard() *task.Board     { return k.board }
+func (k *KanbanPane) GetBoard() *board.Board     { return k.board }
 func (k *KanbanPane) IsDirty() bool             { return k.dirty }
 func (k *KanbanPane) HasFocus() bool            { return k.hasFocus }
 
@@ -85,7 +85,7 @@ func (k *KanbanPane) ConsumeStatusMsg() string {
 	return msg
 }
 
-func (k *KanbanPane) SetBoard(board *task.Board) {
+func (k *KanbanPane) SetBoard(board *board.Board) {
 	k.board = board
 	k.dirty = false
 	k.rebuildFlat()
@@ -172,7 +172,7 @@ func (k *KanbanPane) HandleKeyPress(msg tea.KeyMsg) bool {
 				if t.InstanceTitle != "" {
 					k.pendingJumpInstance = t.InstanceTitle
 				} else {
-					k.statusMsg = "no linked session — use 'af api tasks link' to link"
+					k.statusMsg = "no linked session — use 'af api board link' to link"
 				}
 			}
 			return true
@@ -249,7 +249,7 @@ func (k *KanbanPane) rebuildFlat() {
 	}
 }
 
-func (k *KanbanPane) getTaskAtFlat(idx int) *task.Task {
+func (k *KanbanPane) getTaskAtFlat(idx int) *board.Task {
 	if idx < 0 || idx >= len(k.flat) || k.flat[idx].isHeader {
 		return nil
 	}

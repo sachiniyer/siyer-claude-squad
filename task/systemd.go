@@ -1,6 +1,6 @@
 //go:build linux
 
-package schedule
+package task
 
 import (
 	"fmt"
@@ -10,8 +10,8 @@ import (
 	"strings"
 )
 
-func getUnitName(s Schedule) string {
-	return "agent-factory-sched-" + s.ID
+func getUnitName(t Task) string {
+	return "agent-factory-task-" + t.ID
 }
 
 func getSystemdUserDir() (string, error) {
@@ -26,8 +26,8 @@ func getSystemdUserDir() (string, error) {
 	return dir, nil
 }
 
-func InstallSystemdTimer(s Schedule) error {
-	unitName := getUnitName(s)
+func InstallSystemdTimer(t Task) error {
+	unitName := getUnitName(t)
 
 	dir, err := getSystemdUserDir()
 	if err != nil {
@@ -48,30 +48,30 @@ func InstallSystemdTimer(s Schedule) error {
 	}
 
 	serviceContent := fmt.Sprintf(`[Unit]
-Description=Agent Factory scheduled task %s
+Description=Agent Factory task %s
 
 [Service]
 Type=oneshot
-ExecStart=%s schedule run %s
+ExecStart=%s task run %s
 Environment="PATH=%s"
 Environment="HOME=%s"
 Environment="SHELL=%s"
 Environment="TERM=%s"
 WorkingDirectory=%s
-`, unitName, execPath, s.ID, pathEnv, homeEnv, shellEnv, termEnv, s.ProjectPath)
+`, unitName, execPath, t.ID, pathEnv, homeEnv, shellEnv, termEnv, t.ProjectPath)
 
 	servicePath := filepath.Join(dir, unitName+".service")
 	if err := os.WriteFile(servicePath, []byte(serviceContent), 0644); err != nil {
 		return fmt.Errorf("failed to write service file: %w", err)
 	}
 
-	onCalendar, err := CronToOnCalendar(s.CronExpr)
+	onCalendar, err := CronToOnCalendar(t.CronExpr)
 	if err != nil {
 		return fmt.Errorf("failed to convert cron expression: %w", err)
 	}
 
 	timerContent := fmt.Sprintf(`[Unit]
-Description=Timer for Agent Factory scheduled task %s
+Description=Timer for Agent Factory task %s
 
 [Timer]
 OnCalendar=%s
@@ -99,8 +99,8 @@ WantedBy=timers.target
 	return nil
 }
 
-func RemoveSystemdTimer(s Schedule) error {
-	unitName := getUnitName(s)
+func RemoveSystemdTimer(t Task) error {
+	unitName := getUnitName(t)
 
 	dir, err := getSystemdUserDir()
 	if err != nil {

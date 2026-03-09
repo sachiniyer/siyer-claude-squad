@@ -110,7 +110,7 @@ func jsonError(err error) error {
 var ApiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "Programmatic JSON API for external orchestrators",
-	Long:  "Machine-readable CLI interface for driving agent-factory sessions, schedules, and tasks.",
+	Long:  "Machine-readable CLI interface for driving agent-factory sessions, tasks, and board.",
 }
 
 func init() {
@@ -132,42 +132,42 @@ func init() {
 	sessionsCmd.AddCommand(sessionsDiffCmd)
 	sessionsCmd.AddCommand(sessionsKillCmd)
 
-	// Schedules
-	schedulesAddCmd.Flags().StringVar(&schedAddNameFlag, "name", "", "Schedule name (required)")
-	schedulesAddCmd.Flags().StringVar(&schedAddPromptFlag, "prompt", "", "Prompt to send (required)")
-	schedulesAddCmd.Flags().StringVar(&schedAddCronFlag, "cron", "", "Cron expression (required)")
-	schedulesAddCmd.Flags().StringVar(&schedAddProgramFlag, "program", "", "Program to run (defaults to config default)")
-	schedulesAddCmd.MarkFlagRequired("name")
-	schedulesAddCmd.MarkFlagRequired("prompt")
-	schedulesAddCmd.MarkFlagRequired("cron")
-
-	schedulesCmd.AddCommand(schedulesListCmd)
-	schedulesCmd.AddCommand(schedulesAddCmd)
-	schedulesCmd.AddCommand(schedulesRemoveCmd)
-
 	// Tasks
-	tasksAddCmd.Flags().StringVar(&taskAddTitleFlag, "title", "", "Task title (required)")
-	tasksAddCmd.Flags().StringVar(&taskAddStatusFlag, "status", "backlog", "Task status column (backlog, in_progress, review, done)")
-	tasksAddCmd.Flags().StringVar(&taskAddInstanceFlag, "instance", "", "Link task to a session by title")
-	tasksAddCmd.MarkFlagRequired("title")
-
-	tasksLinkCmd.Flags().StringVar(&taskLinkInstanceFlag, "instance", "", "Session title to link (required)")
-	tasksLinkCmd.MarkFlagRequired("instance")
-
-	tasksMoveCmd.Flags().StringVar(&tasksMoveStatusFlag, "status", "", "Target column (backlog, in_progress, review, done)")
-	tasksMoveCmd.MarkFlagRequired("status")
+	tasksAddCmd.Flags().StringVar(&taskAddNameFlag, "name", "", "Schedule name (required)")
+	tasksAddCmd.Flags().StringVar(&taskAddPromptFlag, "prompt", "", "Prompt to send (required)")
+	tasksAddCmd.Flags().StringVar(&taskAddCronFlag, "cron", "", "Cron expression (required)")
+	tasksAddCmd.Flags().StringVar(&taskAddProgramFlag, "program", "", "Program to run (defaults to config default)")
+	tasksAddCmd.MarkFlagRequired("name")
+	tasksAddCmd.MarkFlagRequired("prompt")
+	tasksAddCmd.MarkFlagRequired("cron")
 
 	tasksCmd.AddCommand(tasksListCmd)
 	tasksCmd.AddCommand(tasksAddCmd)
-	tasksCmd.AddCommand(tasksToggleCmd)
 	tasksCmd.AddCommand(tasksRemoveCmd)
-	tasksCmd.AddCommand(tasksMoveCmd)
-	tasksCmd.AddCommand(tasksLinkCmd)
-	tasksCmd.AddCommand(tasksUnlinkCmd)
-	tasksCmd.AddCommand(tasksBoardCmd)
+
+	// Board
+	boardAddCmd.Flags().StringVar(&boardAddTitleFlag, "title", "", "Task title (required)")
+	boardAddCmd.Flags().StringVar(&boardAddStatusFlag, "status", "backlog", "Task status column (backlog, in_progress, review, done)")
+	boardAddCmd.Flags().StringVar(&boardAddInstanceFlag, "instance", "", "Link task to a session by title")
+	boardAddCmd.MarkFlagRequired("title")
+
+	boardLinkCmd.Flags().StringVar(&boardLinkInstanceFlag, "instance", "", "Session title to link (required)")
+	boardLinkCmd.MarkFlagRequired("instance")
+
+	boardMoveCmd.Flags().StringVar(&boardMoveStatusFlag, "status", "", "Target column (backlog, in_progress, review, done)")
+	boardMoveCmd.MarkFlagRequired("status")
+
+	boardCmd.AddCommand(boardListCmd)
+	boardCmd.AddCommand(boardAddCmd)
+	boardCmd.AddCommand(boardToggleCmd)
+	boardCmd.AddCommand(boardRemoveCmd)
+	boardCmd.AddCommand(boardMoveCmd)
+	boardCmd.AddCommand(boardLinkCmd)
+	boardCmd.AddCommand(boardUnlinkCmd)
+	boardCmd.AddCommand(boardViewCmd)
 
 	// Register subcommand groups
 	ApiCmd.AddCommand(sessionsCmd)
-	ApiCmd.AddCommand(schedulesCmd)
 	ApiCmd.AddCommand(tasksCmd)
+	ApiCmd.AddCommand(boardCmd)
 }
