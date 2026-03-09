@@ -6,7 +6,7 @@ import (
 	"fmt"
 	"github.com/sachiniyer/agent-factory/api"
 	"github.com/sachiniyer/agent-factory/app"
-	cmd2 "github.com/sachiniyer/agent-factory/cmd"
+	cmdutil "github.com/sachiniyer/agent-factory/cmd"
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/daemon"
 	"github.com/sachiniyer/agent-factory/log"
@@ -100,7 +100,7 @@ var (
 			fmt.Println("daemon has been stopped")
 
 			// Clean up resources before deleting storage records
-			if err := tmux.CleanupSessions(cmd2.MakeExecutor()); err != nil {
+			if err := tmux.CleanupSessions(cmdutil.MakeExecutor()); err != nil {
 				return fmt.Errorf("failed to cleanup tmux sessions: %w", err)
 			}
 			fmt.Println("Tmux sessions have been cleaned up")

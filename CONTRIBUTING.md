@@ -43,8 +43,8 @@ BIN_DIR=/usr/local/bin ./dev-install.sh
 | `session/` | Instance lifecycle (start, pause, resume, kill) |
 | `session/git/` | Git worktree operations |
 | `session/tmux/` | Tmux session management |
-| `schedule/` | Scheduled tasks (cron, systemd timers) |
-| `task/` | Per-repo kanban board |
+| `task/` | Automated tasks (cron, systemd timers) |
+| `board/` | Per-repo kanban board |
 | `config/` | Configuration and state persistence |
 | `api/` | Programmatic JSON CLI API |
 | `daemon/` | Background daemon for auto-yes |

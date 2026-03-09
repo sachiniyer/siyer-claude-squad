@@ -43,9 +43,6 @@ type StateManager interface {
 type State struct {
 	// HelpScreensSeen is a bitmask tracking which help screens have been shown
 	HelpScreensSeen uint32 `json:"help_screens_seen"`
-	// InstancesData is kept only for migration from the old global format.
-	// New code stores instances in per-repo files under instances/<repoID>/.
-	InstancesData json.RawMessage `json:"instances,omitempty"`
 }
 
 // DefaultState returns the default state
@@ -56,7 +53,6 @@ func DefaultState() *State {
 }
 
 // LoadState loads the state from disk. If it cannot be done, we return the default state.
-// It also migrates old instance data from state.json to per-repo files.
 func LoadState() *State {
 	configDir, err := GetConfigDir()
 	if err != nil {
@@ -86,61 +82,7 @@ func LoadState() *State {
 		return DefaultState()
 	}
 
-	// Migrate old instance data from state.json to per-repo files
-	if len(state.InstancesData) > 0 && string(state.InstancesData) != "[]" && string(state.InstancesData) != "null" {
-		migrateInstances(state.InstancesData)
-		state.InstancesData = nil
-		if saveErr := SaveState(&state); saveErr != nil {
-			log.WarningLog.Printf("failed to save state after migration: %v", saveErr)
-		}
-	}
-
 	return &state
-}
-
-// migrateInstances moves instances from the old global state to per-repo files.
-func migrateInstances(data json.RawMessage) {
-	// Minimal struct to extract repo path for grouping
-	type instanceForMigration struct {
-		Worktree struct {
-			RepoPath string `json:"repo_path"`
-		} `json:"worktree"`
-	}
-
-	var instances []json.RawMessage
-	if err := json.Unmarshal(data, &instances); err != nil {
-		log.ErrorLog.Printf("failed to parse instances during migration: %v", err)
-		return
-	}
-
-	// Group raw instances by repo ID
-	grouped := make(map[string][]json.RawMessage)
-	for _, raw := range instances {
-		var inst instanceForMigration
-		if err := json.Unmarshal(raw, &inst); err != nil {
-			log.WarningLog.Printf("failed to parse instance during migration: %v", err)
-			continue
-		}
-		repoPath := inst.Worktree.RepoPath
-		if repoPath == "" {
-			repoPath = "unknown"
-		}
-		rid := RepoIDFromRoot(repoPath)
-		grouped[rid] = append(grouped[rid], raw)
-	}
-
-	// Save each group to its per-repo file
-	for rid, group := range grouped {
-		jsonData, err := json.MarshalIndent(group, "", "  ")
-		if err != nil {
-			log.ErrorLog.Printf("failed to marshal instances for repo %s during migration: %v", rid, err)
-			continue
-		}
-		if err := SaveRepoInstances(rid, jsonData); err != nil {
-			log.ErrorLog.Printf("failed to save instances for repo %s during migration: %v", rid, err)
-		}
-	}
-	log.InfoLog.Printf("migrated instances from state.json to %d per-repo files", len(grouped))
 }
 
 // SaveState saves the state to disk
