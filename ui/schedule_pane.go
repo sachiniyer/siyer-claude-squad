@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/sachiniyer/agent-factory/schedule"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/schedule"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/textarea"

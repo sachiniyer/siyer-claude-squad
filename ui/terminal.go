@@ -1,10 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/tmux"
-	"fmt"
 	"os"
 	"strings"
 	"sync"

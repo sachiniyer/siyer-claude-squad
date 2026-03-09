@@ -1,10 +1,10 @@
 package daemon
 
 import (
+	"fmt"
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
-	"fmt"
 	"os"
 	"os/exec"
 	"os/signal"

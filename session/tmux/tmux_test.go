@@ -1,8 +1,8 @@
 package tmux
 
 import (
-	cmd2 "github.com/sachiniyer/agent-factory/cmd"
 	"fmt"
+	cmd2 "github.com/sachiniyer/agent-factory/cmd"
 	"math/rand"
 	"os"
 	"os/exec"

@@ -1,6 +1,7 @@
 package app
 
 import (
+	"fmt"
 	"github.com/sachiniyer/agent-factory/keys"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
@@ -8,7 +9,6 @@ import (
 	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/ui"
 	"github.com/sachiniyer/agent-factory/ui/overlay"
-	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
 )

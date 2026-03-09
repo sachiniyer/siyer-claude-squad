@@ -1,6 +1,9 @@
 package main
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/sachiniyer/agent-factory/api"
 	"github.com/sachiniyer/agent-factory/app"
 	cmd2 "github.com/sachiniyer/agent-factory/cmd"
@@ -12,9 +15,6 @@ import (
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/session/git"
 	"github.com/sachiniyer/agent-factory/session/tmux"
-	"context"
-	"encoding/json"
-	"fmt"
 	"path/filepath"
 
 	"github.com/spf13/cobra"

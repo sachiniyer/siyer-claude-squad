@@ -1,8 +1,8 @@
 package schedule
 
 import (
-	"github.com/sachiniyer/agent-factory/config"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/config"
 	"os"
 	"path/filepath"
 	"text/tabwriter"

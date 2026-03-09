@@ -1,10 +1,10 @@
 package session
 
 import (
-	"github.com/sachiniyer/agent-factory/config"
-	"github.com/sachiniyer/agent-factory/log"
 	"encoding/json"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/log"
 	"time"
 )
 
@@ -181,7 +181,6 @@ func (s *Storage) DeleteInstance(title string) error {
 	}
 	return s.state.SaveInstances(s.repoID, out)
 }
-
 
 // mergeWithDisk reads the current on-disk instances and merges them with the
 // in-memory set. Instances known to the TUI (by title) are replaced with the

@@ -45,7 +45,7 @@ func buildSystemPrompt(sessionTitle string) string {
 }
 
 // shellQuote wraps a string in single quotes, escaping any embedded single quotes
-// using the standard shell idiom: replace ' with '\''
+// using the standard shell idiom: replace ' with '\”
 func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }

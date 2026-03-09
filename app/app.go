@@ -1,6 +1,9 @@
 package app
 
 import (
+	"context"
+	"encoding/json"
+	"fmt"
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/keys"
 	"github.com/sachiniyer/agent-factory/log"
@@ -11,9 +14,6 @@ import (
 	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/ui"
 	"github.com/sachiniyer/agent-factory/ui/overlay"
-	"context"
-	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"time"

@@ -35,9 +35,9 @@ var tasksListCmd = &cobra.Command{
 }
 
 var (
-	taskAddTitleFlag    string
-	taskAddStatusFlag   string
-	taskAddInstanceFlag string
+	taskAddTitleFlag     string
+	taskAddStatusFlag    string
+	taskAddInstanceFlag  string
 	taskLinkInstanceFlag string
 	tasksMoveStatusFlag  string
 )

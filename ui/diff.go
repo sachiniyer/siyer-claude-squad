@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/sachiniyer/agent-factory/session"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/session"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/viewport"

@@ -1,9 +1,9 @@
 package config
 
 import (
-	"github.com/sachiniyer/agent-factory/log"
 	"encoding/json"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/log"
 	"os"
 	"path/filepath"
 )

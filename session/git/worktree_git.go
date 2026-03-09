@@ -17,4 +17,3 @@ func (g *GitWorktree) runGitCommand(path string, args ...string) (string, error)
 
 	return string(output), nil
 }
-

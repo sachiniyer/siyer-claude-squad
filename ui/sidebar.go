@@ -1,10 +1,10 @@
 package ui
 
 import (
+	"fmt"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/schedule"
 	"github.com/sachiniyer/agent-factory/session"
-	"fmt"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"
@@ -45,7 +45,6 @@ var sectionHeaderSelectedStyle = lipgloss.NewStyle().
 	Bold(true).
 	Background(lipgloss.Color("#dde4f0")).
 	Foreground(lipgloss.AdaptiveColor{Light: "#1a1a1a", Dark: "#1a1a1a"})
-
 
 // Sidebar is the unified left navigation pane with collapsible sections.
 type Sidebar struct {
@@ -477,4 +476,3 @@ func (s *Sidebar) renderInstance(idx int, selected bool) string {
 	}
 	return s.renderer.Render(s.instances[idx], idx+1, selected, len(s.repos) > 1)
 }
-

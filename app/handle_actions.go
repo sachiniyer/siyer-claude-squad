@@ -1,12 +1,12 @@
 package app
 
 import (
+	"fmt"
 	"github.com/sachiniyer/agent-factory/keys"
 	"github.com/sachiniyer/agent-factory/log"
 	"github.com/sachiniyer/agent-factory/session"
 	"github.com/sachiniyer/agent-factory/task"
 	"github.com/sachiniyer/agent-factory/ui"
-	"fmt"
 	"os"
 	"os/exec"
 	"runtime"

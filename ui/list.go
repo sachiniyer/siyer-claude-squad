@@ -1,10 +1,10 @@
 package ui
 
 import (
-	"github.com/sachiniyer/agent-factory/log"
-	"github.com/sachiniyer/agent-factory/session"
 	"errors"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/session"
 	"strings"
 
 	"github.com/charmbracelet/bubbles/spinner"

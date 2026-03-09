@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"github.com/sachiniyer/agent-factory/task"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/task"
 	"strings"
 	"time"
 
@@ -43,9 +43,9 @@ type KanbanPane struct {
 func NewKanbanPane() *KanbanPane { return &KanbanPane{} }
 
 func (k *KanbanPane) SetSize(width, height int) { k.width = width; k.height = height }
-func (k *KanbanPane) GetBoard() *task.Board      { return k.board }
-func (k *KanbanPane) IsDirty() bool              { return k.dirty }
-func (k *KanbanPane) HasFocus() bool             { return k.hasFocus }
+func (k *KanbanPane) GetBoard() *task.Board     { return k.board }
+func (k *KanbanPane) IsDirty() bool             { return k.dirty }
+func (k *KanbanPane) HasFocus() bool            { return k.hasFocus }
 
 // PendingJumpInstance returns the instance title to jump to, if any.
 func (k *KanbanPane) PendingJumpInstance() string {

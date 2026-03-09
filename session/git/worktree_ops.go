@@ -1,8 +1,8 @@
 package git
 
 import (
-	"github.com/sachiniyer/agent-factory/log"
 	"fmt"
+	"github.com/sachiniyer/agent-factory/log"
 	"os"
 	"os/exec"
 	"strings"

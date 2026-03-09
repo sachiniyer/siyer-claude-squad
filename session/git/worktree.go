@@ -1,9 +1,9 @@
 package git
 
 import (
+	"fmt"
 	"github.com/sachiniyer/agent-factory/config"
 	"github.com/sachiniyer/agent-factory/log"
-	"fmt"
 	"os/exec"
 	"path/filepath"
 	"strings"
