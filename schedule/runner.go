@@ -87,8 +87,12 @@ func WaitForReady(instance *session.Instance) error {
 	for {
 		select {
 		case <-timeout:
-			content, _ := instance.Preview()
-			log.ErrorLog.Printf("waitForReady timed out. Last pane content: %s", content)
+			content, err := instance.Preview()
+			if err != nil {
+				log.ErrorLog.Printf("waitForReady timed out (preview also failed: %v)", err)
+			} else {
+				log.ErrorLog.Printf("waitForReady timed out. Last pane content: %s", content)
+			}
 			return fmt.Errorf("timed out waiting for program to start (60s)")
 		case <-ticker.C:
 			content, err := instance.Preview()

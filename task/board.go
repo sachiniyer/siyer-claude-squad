@@ -195,6 +195,18 @@ func SaveBoard(board *Board) error {
 
 // --- Repo-scoped convenience (used by API) ---
 
+// updateBoardForRepo loads the board, applies fn, and saves it back.
+func updateBoardForRepo(repo *config.RepoContext, fn func(*Board) error) error {
+	board, err := LoadBoardForRepo(repo)
+	if err != nil {
+		return err
+	}
+	if err := fn(board); err != nil {
+		return err
+	}
+	return SaveBoardForRepo(repo, board)
+}
+
 func LoadTasksForRepo(repo *config.RepoContext) ([]Task, error) {
 	board, err := LoadBoardForRepo(repo)
 	if err != nil {
@@ -213,58 +225,23 @@ func AddTaskForRepoWithStatus(repo *config.RepoContext, title, status string) (T
 }
 
 func ToggleTaskForRepo(repo *config.RepoContext, id string) error {
-	board, err := LoadBoardForRepo(repo)
-	if err != nil {
-		return err
-	}
-	if err := board.ToggleTask(id); err != nil {
-		return err
-	}
-	return SaveBoardForRepo(repo, board)
+	return updateBoardForRepo(repo, func(b *Board) error { return b.ToggleTask(id) })
 }
 
 func DeleteTaskForRepo(repo *config.RepoContext, id string) error {
-	board, err := LoadBoardForRepo(repo)
-	if err != nil {
-		return err
-	}
-	if err := board.DeleteTask(id); err != nil {
-		return err
-	}
-	return SaveBoardForRepo(repo, board)
+	return updateBoardForRepo(repo, func(b *Board) error { return b.DeleteTask(id) })
 }
 
 func MoveTaskForRepo(repo *config.RepoContext, id, newStatus string) error {
-	board, err := LoadBoardForRepo(repo)
-	if err != nil {
-		return err
-	}
-	if err := board.MoveTask(id, newStatus); err != nil {
-		return err
-	}
-	return SaveBoardForRepo(repo, board)
+	return updateBoardForRepo(repo, func(b *Board) error { return b.MoveTask(id, newStatus) })
 }
 
 func LinkTaskForRepo(repo *config.RepoContext, taskID, instanceTitle string) error {
-	board, err := LoadBoardForRepo(repo)
-	if err != nil {
-		return err
-	}
-	if err := board.LinkTask(taskID, instanceTitle); err != nil {
-		return err
-	}
-	return SaveBoardForRepo(repo, board)
+	return updateBoardForRepo(repo, func(b *Board) error { return b.LinkTask(taskID, instanceTitle) })
 }
 
 func UnlinkTaskForRepo(repo *config.RepoContext, taskID string) error {
-	board, err := LoadBoardForRepo(repo)
-	if err != nil {
-		return err
-	}
-	if err := board.UnlinkTask(taskID); err != nil {
-		return err
-	}
-	return SaveBoardForRepo(repo, board)
+	return updateBoardForRepo(repo, func(b *Board) error { return b.UnlinkTask(taskID) })
 }
 
 func generateID() string {

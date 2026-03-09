@@ -26,6 +26,10 @@ type Schedule struct {
 	LastRunStatus string     `json:"last_run_status,omitempty"`
 }
 
+// getSchedulesPathFn is the function used to resolve the schedules file path.
+// It can be overridden in tests.
+var getSchedulesPathFn = getSchedulesPath
+
 func getSchedulesPath() (string, error) {
 	configDir, err := config.GetConfigDir()
 	if err != nil {
@@ -35,7 +39,7 @@ func getSchedulesPath() (string, error) {
 }
 
 func LoadSchedules() ([]Schedule, error) {
-	path, err := getSchedulesPath()
+	path, err := getSchedulesPathFn()
 	if err != nil {
 		return nil, err
 	}
@@ -57,7 +61,7 @@ func LoadSchedules() ([]Schedule, error) {
 }
 
 func SaveSchedules(schedules []Schedule) error {
-	path, err := getSchedulesPath()
+	path, err := getSchedulesPathFn()
 	if err != nil {
 		return err
 	}

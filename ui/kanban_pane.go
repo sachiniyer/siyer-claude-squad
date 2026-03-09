@@ -107,6 +107,13 @@ func (k *KanbanPane) HandleKeyPress(msg tea.KeyMsg) bool {
 	if !k.hasFocus {
 		return false
 	}
+	if k.board == nil {
+		// Escape should still unfocus even with no board
+		if msg.String() == "esc" {
+			k.hasFocus = false
+		}
+		return true
+	}
 	if k.editing || k.adding {
 		return k.handleEditMode(msg)
 	}

@@ -15,16 +15,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/charmbracelet/bubbles/spinner"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
-	"github.com/mattn/go-runewidth"
 )
 
 const GlobalInstanceLimit = 10
@@ -451,10 +447,12 @@ func (m *home) handleQuit() (tea.Model, tea.Cmd) {
 func (m *home) saveContentPaneState() {
 	kp := m.contentPane.KanbanPane()
 	if kp.IsDirty() {
-		if err := task.SaveBoard(kp.GetBoard()); err != nil {
-			log.ErrorLog.Printf("failed to save board: %v", err)
+		if board := kp.GetBoard(); board != nil {
+			if err := task.SaveBoard(board); err != nil {
+				log.ErrorLog.Printf("failed to save board: %v", err)
+			}
+			m.sidebar.SetTaskCount(board.TaskCount())
 		}
-		m.sidebar.SetTaskCount(kp.GetBoard().TaskCount())
 	}
 
 	hp := m.contentPane.HooksPane()
@@ -664,252 +662,33 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, cmd
 	}
 
-	if m.state == stateHelp {
+	// Dispatch to state-specific handlers
+	switch m.state {
+	case stateHelp:
 		return m.handleHelpState(msg)
-	}
-
-	if m.state == stateNew {
-		if msg.String() == "ctrl+c" {
-			m.state = stateDefault
-			m.promptAfterName = false
-			m.selectedWorktree = nil
-			m.availableWorktrees = nil
-			m.sidebar.Kill()
-			return m, tea.Sequence(
-				tea.WindowSize(),
-				func() tea.Msg {
-					m.menu.SetState(ui.StateDefault)
-					return nil
-				},
-			)
-		}
-
-		instance := m.sidebar.GetInstances()[m.sidebar.NumInstances()-1]
-		switch msg.Type {
-		case tea.KeyEnter:
-			if len(instance.Title) == 0 {
-				return m, m.handleError(fmt.Errorf("title cannot be empty"))
-			}
-
-			instance.SetStatus(session.Loading)
-			m.newInstanceFinalizer()
-			promptAfterName := m.promptAfterName
-			m.promptAfterName = false
-			m.state = stateDefault
-			m.menu.SetState(ui.StateDefault)
-
-			selectedWt := m.selectedWorktree
-			m.selectedWorktree = nil
-			m.availableWorktrees = nil
-			startCmd := func() tea.Msg {
-				var err error
-				if selectedWt != nil {
-					err = instance.StartWithExistingWorktree(selectedWt.Path, selectedWt.Branch)
-				} else {
-					err = instance.Start(true)
-				}
-				return instanceStartedMsg{
-					instance:        instance,
-					err:             err,
-					promptAfterName: promptAfterName,
-				}
-			}
-
-			return m, tea.Batch(tea.WindowSize(), m.selectionChanged(), startCmd)
-		case tea.KeyRunes:
-			if runewidth.StringWidth(instance.Title) >= 32 {
-				return m, m.handleError(fmt.Errorf("title cannot be longer than 32 characters"))
-			}
-			if err := instance.SetTitle(instance.Title + string(msg.Runes)); err != nil {
-				return m, m.handleError(err)
-			}
-		case tea.KeyBackspace:
-			runes := []rune(instance.Title)
-			if len(runes) == 0 {
-				return m, nil
-			}
-			if err := instance.SetTitle(string(runes[:len(runes)-1])); err != nil {
-				return m, m.handleError(err)
-			}
-		case tea.KeySpace:
-			if err := instance.SetTitle(instance.Title + " "); err != nil {
-				return m, m.handleError(err)
-			}
-		case tea.KeyEsc:
-			m.sidebar.Kill()
-			m.state = stateDefault
-			m.selectedWorktree = nil
-			m.availableWorktrees = nil
-			cmd := m.selectionChanged()
-
-			return m, tea.Batch(cmd, tea.Sequence(
-				tea.WindowSize(),
-				func() tea.Msg {
-					m.menu.SetState(ui.StateDefault)
-					return nil
-				},
-			))
-		default:
-		}
-		return m, nil
-	} else if m.state == statePrompt {
-		shouldClose := m.textInputOverlay.HandleKeyPress(msg)
-		if shouldClose {
-			selected := m.sidebar.GetSelectedInstance()
-			if selected == nil {
-				return m, nil
-			}
-			if m.textInputOverlay.IsSubmitted() {
-				if err := selected.SendPrompt(m.textInputOverlay.GetValue()); err != nil {
-					return m, m.handleError(err)
-				}
-			}
-			m.textInputOverlay = nil
-			m.state = stateDefault
-			return m, tea.Sequence(
-				tea.WindowSize(),
-				func() tea.Msg {
-					m.menu.SetState(ui.StateDefault)
-					m.showHelpScreen(helpStart(selected), nil)
-					return nil
-				},
-			)
-		}
-		return m, nil
-	}
-
-	// Handle worktree selection state
-	if m.state == stateSelectWorktree {
-		shouldClose := m.selectionOverlay.HandleKeyPress(msg)
-		if shouldClose {
-			if m.selectionOverlay.IsSubmitted() {
-				idx := m.selectionOverlay.GetSelectedIndex()
-				wt := m.availableWorktrees[idx]
-				m.selectedWorktree = &wt
-				m.selectionOverlay = nil
-
-				instance, err := session.NewInstance(session.InstanceOptions{
-					Title:   "",
-					Path:    ".",
-					Program: m.program,
-				})
-				if err != nil {
-					m.selectedWorktree = nil
-					m.state = stateDefault
-					m.menu.SetState(ui.StateDefault)
-					return m, m.handleError(err)
-				}
-
-				m.newInstanceFinalizer = m.sidebar.AddInstance(instance)
-				m.sidebar.SetSelectedInstance(m.sidebar.NumInstances() - 1)
-				m.state = stateNew
-				m.menu.SetState(ui.StateNewInstance)
-				return m, nil
-			}
-			m.selectionOverlay = nil
-			m.selectedWorktree = nil
-			m.availableWorktrees = nil
-			m.state = stateDefault
-			m.menu.SetState(ui.StateDefault)
-			return m, nil
-		}
-		return m, nil
-	}
-
-	// Handle link-instance selection state
-	if m.state == stateLinkInstance {
-		shouldClose := m.selectionOverlay.HandleKeyPress(msg)
-		if shouldClose {
-			if m.selectionOverlay.IsSubmitted() {
-				idx := m.selectionOverlay.GetSelectedIndex()
-				instances := m.sidebar.GetInstances()
-				if idx >= 0 && idx < len(instances) {
-					inst := instances[idx]
-					kp := m.contentPane.KanbanPane()
-					if board := kp.GetBoard(); board != nil {
-						board.LinkTask(m.linkingTaskID, inst.Title)
-						kp.SetBoard(board) // refresh flat list
-						if err := task.SaveBoard(board); err != nil {
-							log.ErrorLog.Printf("failed to save board: %v", err)
-						}
-					}
-				}
-			}
-			m.selectionOverlay = nil
-			m.linkingTaskID = ""
-			m.state = stateDefault
-			return m, nil
-		}
-		return m, nil
-	}
-
-	// Handle confirmation state
-	if m.state == stateConfirm {
-		shouldClose := m.confirmationOverlay.HandleKeyPress(msg)
-		if shouldClose {
-			if m.state == stateConfirm {
-				m.state = stateDefault
-			}
-			m.confirmationOverlay = nil
-			return m, nil
-		}
-		return m, nil
-	}
-
-	// Handle search state
-	if m.state == stateSearch {
-		shouldClose := m.searchOverlay.HandleKeyPress(msg)
-		if shouldClose {
-			if m.searchOverlay.IsSubmitted() {
-				if inst := m.searchOverlay.GetSelectedInstance(); inst != nil {
-					m.sidebar.SelectInstance(inst)
-				}
-			}
-			m.searchOverlay = nil
-			m.state = stateDefault
-			return m, tea.Sequence(tea.WindowSize(), m.selectionChanged())
-		}
-		return m, nil
+	case stateNew:
+		return m.handleStateNew(msg)
+	case statePrompt:
+		return m.handleStatePrompt(msg)
+	case stateSelectWorktree:
+		return m.handleStateSelectWorktree(msg)
+	case stateLinkInstance:
+		return m.handleStateLinkInstance(msg)
+	case stateConfirm:
+		return m.handleStateConfirm(msg)
+	case stateSearch:
+		return m.handleStateSearch(msg)
 	}
 
 	// Route keys to content pane if it has focus (e.g., editing todos/schedules)
-	if m.contentPane.HasFocus() {
-		consumed := m.contentPane.HandleKeyPress(msg)
-		if consumed {
-			// If focus was released (Esc), save state
-			if !m.contentPane.HasFocus() {
-				m.saveContentPaneState()
-			}
-			// Check for pending jump/attach/link/status from kanban
-			kp := m.contentPane.KanbanPane()
-			if msg := kp.ConsumeStatusMsg(); msg != "" {
-				return m, m.handleError(fmt.Errorf("%s", msg))
-			}
-			if title := kp.ConsumePendingJump(); title != "" {
-				return m, m.jumpToInstance(title)
-			}
-			if title := kp.ConsumePendingAttach(); title != "" {
-				return m.attachToInstance(title)
-			}
-			if taskID := kp.ConsumePendingLink(); taskID != "" {
-				return m, m.showLinkInstanceOverlay(taskID)
-			}
-			// Check if a new schedule was submitted via the inline form
-			sp := m.contentPane.SchedulePane()
-			if sp.HasPendingCreate() {
-				return m, m.handleScheduleCreate()
-			}
-			if sp.HasPendingTrigger() {
-				return m, m.handleScheduleTrigger()
-			}
-			return m, nil
-		}
+	if mod, cmd, consumed := m.handleContentPaneFocus(msg); consumed {
+		return mod, cmd
 	}
 
 	// Exit scrolling mode when ESC is pressed
-	tw := m.contentPane.TabbedWindow()
 	if msg.Type == tea.KeyEsc {
 		if m.contentPane.GetMode() == ui.ContentModeInstance {
+			tw := m.contentPane.TabbedWindow()
 			if tw.IsInPreviewTab() && tw.IsPreviewInScrollMode() {
 				selected := m.sidebar.GetSelectedInstance()
 				err := tw.ResetPreviewToNormalMode(selected)
@@ -942,344 +721,12 @@ func (m *home) handleKeyPress(msg tea.KeyMsg) (mod tea.Model, cmd tea.Cmd) {
 		return m, nil
 	}
 
-	// Handle content pane Enter for focusing (todos/schedules)
-	if name == keys.KeyEnter {
-		mode := m.contentPane.GetMode()
-		if mode == ui.ContentModeTodos || mode == ui.ContentModeSchedules || mode == ui.ContentModeHooks {
-			consumed := m.contentPane.HandleKeyPress(msg)
-			if consumed {
-				return m, nil
-			}
-		}
+	// Handle content pane Enter/attach for focusing (todos/schedules/hooks)
+	if mod, cmd, consumed := m.handleContentPaneEnter(msg, name); consumed {
+		return mod, cmd
 	}
 
-	// Route 'a' to board when viewing Board section (instead of worktree attach)
-	if name == keys.KeyAttach && m.contentPane.GetMode() == ui.ContentModeTodos {
-		consumed := m.contentPane.HandleKeyPress(msg)
-		if consumed {
-			return m, nil
-		}
-	}
-
-	switch name {
-	case keys.KeyHelp:
-		return m.showHelpScreen(helpTypeGeneral{}, nil)
-
-	// Sidebar navigation
-	case keys.KeyUp:
-		m.sidebar.Up()
-		return m, m.selectionChanged()
-	case keys.KeyDown:
-		m.sidebar.Down()
-		return m, m.selectionChanged()
-	case keys.KeyLeft:
-		m.sidebar.CollapseSection()
-		return m, m.selectionChanged()
-	case keys.KeyRight:
-		m.sidebar.ExpandSection()
-		return m, m.selectionChanged()
-	case keys.KeyNextSection:
-		m.sidebar.JumpNextSection()
-		return m, m.selectionChanged()
-	case keys.KeyPrevSection:
-		m.sidebar.JumpPrevSection()
-		return m, m.selectionChanged()
-
-	// Instance creation
-	case keys.KeyPrompt:
-		if m.sidebar.NumInstances() >= GlobalInstanceLimit {
-			return m, m.handleError(
-				fmt.Errorf("you can't create more than %d instances", GlobalInstanceLimit))
-		}
-		instance, err := session.NewInstance(session.InstanceOptions{
-			Title:   "",
-			Path:    ".",
-			Program: m.program,
-		})
-		if err != nil {
-			return m, m.handleError(err)
-		}
-		m.newInstanceFinalizer = m.sidebar.AddInstance(instance)
-		m.sidebar.SetSelectedInstance(m.sidebar.NumInstances() - 1)
-		m.state = stateNew
-		m.menu.SetState(ui.StateNewInstance)
-		m.promptAfterName = true
-		return m, nil
-
-	case keys.KeyNew:
-		// Context-aware: if on Schedules section, create a schedule instead
-		if m.sidebar.GetSelection().Kind == ui.SectionSchedules {
-			cwd, err := os.Getwd()
-			if err != nil {
-				cwd = "."
-			}
-			m.contentPane.SchedulePane().EnterCreateMode(cwd)
-			m.contentPane.SetMode(ui.ContentModeSchedules)
-			return m, m.selectionChanged()
-		}
-
-		if m.sidebar.NumInstances() >= GlobalInstanceLimit {
-			return m, m.handleError(
-				fmt.Errorf("you can't create more than %d instances", GlobalInstanceLimit))
-		}
-		instance, err := session.NewInstance(session.InstanceOptions{
-			Title:   "",
-			Path:    ".",
-			Program: m.program,
-		})
-		if err != nil {
-			return m, m.handleError(err)
-		}
-		m.newInstanceFinalizer = m.sidebar.AddInstance(instance)
-		m.sidebar.SetSelectedInstance(m.sidebar.NumInstances() - 1)
-		m.state = stateNew
-		m.menu.SetState(ui.StateNewInstance)
-		return m, nil
-
-	case keys.KeySchedule:
-		cwd, err := os.Getwd()
-		if err != nil {
-			cwd = "."
-		}
-		m.contentPane.SchedulePane().EnterCreateMode(cwd)
-		m.navigateToSection(ui.SectionSchedules)
-		m.contentPane.SetMode(ui.ContentModeSchedules)
-		return m, m.selectionChanged()
-
-	case keys.KeyScheduleList:
-		// Navigate to schedules section in sidebar
-		m.navigateToSection(ui.SectionSchedules)
-		return m, m.selectionChanged()
-
-	case keys.KeyTriggerSchedule:
-		// Only trigger when viewing schedules section
-		if m.sidebar.GetSelection().Kind != ui.SectionSchedules {
-			return m, nil
-		}
-		sp := m.contentPane.SchedulePane()
-		if len(sp.GetSchedules()) == 0 {
-			return m, m.handleError(fmt.Errorf("no schedules to trigger"))
-		}
-		m.contentPane.SetMode(ui.ContentModeSchedules)
-		sp.SetFocus(true)
-		sp.SetPendingTrigger()
-		return m, m.handleScheduleTrigger()
-
-	case keys.KeyTasks:
-		// Navigate to todos section in sidebar
-		m.navigateToSection(ui.SectionTodos)
-		return m, m.selectionChanged()
-
-	case keys.KeyMicroClaw:
-		if m.microclawBridge == nil || !m.microclawBridge.Available() {
-			return m, m.handleError(fmt.Errorf("MicroClaw not available — set MICROCLAW_DIR or install microclaw"))
-		}
-		// Navigate to MicroClaw section in sidebar
-		m.navigateToSection(ui.SectionMicroClaw)
-		return m, m.selectionChanged()
-
-	case keys.KeySearch:
-		instances := m.sidebar.GetInstances()
-		if len(instances) == 0 {
-			return m, m.handleError(fmt.Errorf("no sessions to search"))
-		}
-		m.searchOverlay = overlay.NewSearchOverlay(instances)
-		m.searchOverlay.SetWidth(60)
-		m.state = stateSearch
-		return m, nil
-
-	case keys.KeyAttach:
-		if m.sidebar.NumInstances() >= GlobalInstanceLimit {
-			return m, m.handleError(
-				fmt.Errorf("you can't create more than %d instances", GlobalInstanceLimit))
-		}
-
-		worktrees, err := git.ListWorktrees(".")
-		if err != nil {
-			return m, m.handleError(fmt.Errorf("failed to list worktrees: %v", err))
-		}
-		if len(worktrees) == 0 {
-			return m, m.handleError(fmt.Errorf("no worktrees found"))
-		}
-
-		trackedPaths := make(map[string]bool)
-		for _, inst := range m.sidebar.GetInstances() {
-			if p := inst.GetWorktreePath(); p != "" {
-				trackedPaths[p] = true
-			}
-		}
-
-		items := make([]string, len(worktrees))
-		for i, wt := range worktrees {
-			label := wt.Path
-			if wt.Branch != "" {
-				label = fmt.Sprintf("%s (%s)", wt.Branch, wt.Path)
-			}
-			if wt.IsMainWorktree {
-				label += " [root]"
-			}
-			if trackedPaths[wt.Path] {
-				label += " [has session]"
-			}
-			items[i] = label
-		}
-
-		m.availableWorktrees = worktrees
-		m.selectionOverlay = overlay.NewSelectionOverlay("Attach to existing worktree", items)
-		m.selectionOverlay.SetWidth(60)
-		m.state = stateSelectWorktree
-		return m, nil
-
-	// Hooks configuration
-	case keys.KeyHooks:
-		m.navigateToSection(ui.SectionHooks)
-		return m, m.selectionChanged()
-
-	// PR actions
-	case keys.KeyOpenPR:
-		selected := m.sidebar.GetSelectedInstance()
-		if selected == nil || selected.GetPRInfo() == nil {
-			return m, nil
-		}
-		url := selected.GetPRInfo().URL
-		var openCmd *exec.Cmd
-		if runtime.GOOS == "darwin" {
-			openCmd = exec.Command("open", url)
-		} else {
-			openCmd = exec.Command("xdg-open", url)
-		}
-		if err := openCmd.Start(); err != nil {
-			return m, m.handleError(fmt.Errorf("failed to open PR: %w", err))
-		}
-		return m, nil
-
-	case keys.KeyCopyPR:
-		selected := m.sidebar.GetSelectedInstance()
-		if selected == nil || selected.GetPRInfo() == nil {
-			return m, nil
-		}
-		url := selected.GetPRInfo().URL
-		var copyCmd *exec.Cmd
-		switch runtime.GOOS {
-		case "darwin":
-			copyCmd = exec.Command("pbcopy")
-		default:
-			if _, err := exec.LookPath("wl-copy"); err == nil {
-				copyCmd = exec.Command("wl-copy")
-			} else {
-				copyCmd = exec.Command("xclip", "-selection", "clipboard")
-			}
-		}
-		copyCmd.Stdin = strings.NewReader(url)
-		if err := copyCmd.Run(); err != nil {
-			return m, m.handleError(fmt.Errorf("failed to copy PR URL: %w", err))
-		}
-		return m, nil
-
-	// Scrolling
-	case keys.KeyShiftUp:
-		m.contentPane.ScrollUp()
-		return m, m.selectionChanged()
-	case keys.KeyShiftDown:
-		m.contentPane.ScrollDown()
-		return m, m.selectionChanged()
-
-	// Tab cycling (instance mode only)
-	case keys.KeyTab:
-		if m.contentPane.GetMode() == ui.ContentModeInstance {
-			tw.Toggle()
-			m.menu.SetActiveTab(tw.GetActiveTab())
-			return m, m.selectionChanged()
-		}
-		return m, nil
-	case keys.KeyShiftTab:
-		if m.contentPane.GetMode() == ui.ContentModeInstance {
-			tw.ToggleBack()
-			m.menu.SetActiveTab(tw.GetActiveTab())
-			return m, m.selectionChanged()
-		}
-		return m, nil
-
-	// Instance actions
-	case keys.KeyKill:
-		selected := m.sidebar.GetSelectedInstance()
-		if selected == nil || selected.Status == session.Loading {
-			return m, nil
-		}
-
-		killAction := func() tea.Msg {
-			tw.CleanupTerminalForInstance(selected.Title)
-			m.sidebar.Kill()
-			if err := m.storage.DeleteInstance(selected.Title); err != nil {
-				log.ErrorLog.Printf("failed to delete instance from storage: %v", err)
-			}
-			return instanceChangedMsg{}
-		}
-
-		message := fmt.Sprintf("[!] Kill session '%s'?", selected.Title)
-		return m, m.confirmAction(message, killAction)
-
-	case keys.KeyEnter:
-		sel := m.sidebar.GetSelection()
-		// Toggle expandable section headers (only Instances has children)
-		if sel.IsHeader && sel.Kind == ui.SectionInstances {
-			m.sidebar.ToggleSection()
-			return m, m.selectionChanged()
-		}
-		// Instance selected
-		if sel.Kind == ui.SectionInstances {
-			selected := m.sidebar.GetSelectedInstance()
-			if selected == nil || selected.Status == session.Loading || !selected.TmuxAlive() {
-				return m, nil
-			}
-			if tw.IsInTerminalTab() {
-				m.showHelpScreen(helpTypeInstanceAttach{}, func() {
-					ch, err := tw.AttachTerminal()
-					if err != nil {
-						log.ErrorLog.Printf("failed to attach terminal: %v", err)
-						return
-					}
-					<-ch
-					m.state = stateDefault
-				})
-				return m, nil
-			}
-			m.showHelpScreen(helpTypeInstanceAttach{}, func() {
-				ch, err := m.sidebar.Attach()
-				if err != nil {
-					log.ErrorLog.Printf("failed to attach: %v", err)
-					return
-				}
-				<-ch
-				m.state = stateDefault
-			})
-			return m, nil
-		}
-		// MicroClaw selected — attach
-		if sel.Kind == ui.SectionMicroClaw {
-			if m.microclawBridge == nil || !m.microclawBridge.Available() {
-				return m, m.handleError(fmt.Errorf("MicroClaw not available"))
-			}
-			mc := m.contentPane.MicroClawPane()
-			if mc == nil {
-				return m, nil
-			}
-			m.showHelpScreen(helpTypeInstanceAttach{}, func() {
-				ch, err := mc.Attach()
-				if err != nil {
-					log.ErrorLog.Printf("failed to attach microclaw: %v", err)
-					return
-				}
-				<-ch
-				m.state = stateDefault
-			})
-			return m, nil
-		}
-		return m, nil
-
-	default:
-		return m, nil
-	}
+	return m.handleDefaultKeyPress(msg, name)
 }
 
 // jumpToInstance navigates the sidebar to the instance with the given title.
@@ -1319,25 +766,6 @@ func (m *home) attachToInstance(title string) (tea.Model, tea.Cmd) {
 		}
 	}
 	return m, m.handleError(fmt.Errorf("instance %q not found", title))
-}
-
-// showLinkInstanceOverlay shows a selection overlay to pick an instance to link to a task.
-func (m *home) showLinkInstanceOverlay(taskID string) tea.Cmd {
-	instances := m.sidebar.GetInstances()
-	if len(instances) == 0 {
-		return m.handleError(fmt.Errorf("no sessions available to link"))
-	}
-
-	items := make([]string, len(instances))
-	for i, inst := range instances {
-		items[i] = inst.Title
-	}
-
-	m.linkingTaskID = taskID
-	m.selectionOverlay = overlay.NewSelectionOverlay("Link task to session", items)
-	m.selectionOverlay.SetWidth(60)
-	m.state = stateLinkInstance
-	return nil
 }
 
 // navigateToSection moves the sidebar selection to the header of the given section.

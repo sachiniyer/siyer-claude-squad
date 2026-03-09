@@ -62,11 +62,14 @@ type Bridge struct {
 // If dir is empty, it defaults to ~/.microclaw.
 func NewBridge(dir string) *Bridge {
 	if dir == "" {
-		home, _ := os.UserHomeDir()
+		home, err := os.UserHomeDir()
+		if err != nil {
+			home = "."
+		}
 		dir = filepath.Join(home, ".microclaw")
 	}
 
-	jar, _ := cookiejar.New(nil)
+	jar, _ := cookiejar.New(nil) // nil options never errors
 
 	password := os.Getenv("MICROCLAW_PASSWORD")
 	if password == "" {
@@ -109,7 +112,10 @@ func (b *Bridge) Available() bool {
 
 // login authenticates with the microclaw Web API and stores the CSRF token.
 func (b *Bridge) login() error {
-	body, _ := json.Marshal(map[string]string{"password": b.password})
+	body, err := json.Marshal(map[string]string{"password": b.password})
+	if err != nil {
+		return fmt.Errorf("failed to marshal login body: %w", err)
+	}
 	resp, err := b.httpClient.Post(
 		b.apiBaseURL+"/api/auth/login",
 		"application/json",
@@ -121,7 +127,10 @@ func (b *Bridge) login() error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != 200 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("login failed (status %d), could not read body: %w", resp.StatusCode, err)
+		}
 		return fmt.Errorf("login failed (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
@@ -305,7 +314,10 @@ func (b *Bridge) sendViaAPI(content string) error {
 		return fmt.Errorf("auth failed: %w", err)
 	}
 
-	body, _ := json.Marshal(map[string]string{"message": content})
+	body, err := json.Marshal(map[string]string{"message": content})
+	if err != nil {
+		return fmt.Errorf("failed to marshal message: %w", err)
+	}
 	req, err := http.NewRequest("POST", b.apiBaseURL+"/api/send_stream", bytes.NewReader(body))
 	if err != nil {
 		return err
@@ -326,11 +338,14 @@ func (b *Bridge) sendViaAPI(content string) error {
 		if err := b.login(); err != nil {
 			return fmt.Errorf("re-auth failed: %w", err)
 		}
-		if b.csrfToken != "" {
-			req.Header.Set("X-CSRF-Token", b.csrfToken)
+		body, err = json.Marshal(map[string]string{"message": content})
+		if err != nil {
+			return fmt.Errorf("failed to marshal message on retry: %w", err)
 		}
-		body, _ := json.Marshal(map[string]string{"message": content})
-		req, _ = http.NewRequest("POST", b.apiBaseURL+"/api/send_stream", bytes.NewReader(body))
+		req, err = http.NewRequest("POST", b.apiBaseURL+"/api/send_stream", bytes.NewReader(body))
+		if err != nil {
+			return fmt.Errorf("failed to create retry request: %w", err)
+		}
 		req.Header.Set("Content-Type", "application/json")
 		if b.csrfToken != "" {
 			req.Header.Set("X-CSRF-Token", b.csrfToken)
@@ -343,7 +358,10 @@ func (b *Bridge) sendViaAPI(content string) error {
 	}
 
 	if resp.StatusCode != 200 {
-		respBody, _ := io.ReadAll(resp.Body)
+		respBody, err := io.ReadAll(resp.Body)
+		if err != nil {
+			return fmt.Errorf("send failed (status %d), could not read body: %w", resp.StatusCode, err)
+		}
 		return fmt.Errorf("send failed (status %d): %s", resp.StatusCode, string(respBody))
 	}
 
