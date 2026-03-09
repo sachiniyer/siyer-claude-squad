@@ -9,8 +9,18 @@ permissions:
   contents: write
 
 jobs:
+  cleanup:
+    name: Cleanup old nightly release
+    runs-on: ubuntu-latest
+    steps:
+    - name: Delete old nightly release
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: gh release delete nightly --cleanup-tag -y --repo ${{ github.repository }} || true
+
   nightly:
     name: Nightly Build
+    needs: cleanup
     runs-on: ubuntu-latest
     strategy:
       matrix:
@@ -44,7 +54,7 @@ jobs:
         if [ "${{ matrix.goos }}" = "windows" ]; then
           BINARY_NAME=$BINARY_NAME.exe
         fi
-        ARCHIVE_NAME=agent-factory-${VERSION}-${{ matrix.goos }}-${{ matrix.goarch }}
+        ARCHIVE_NAME=agent-factory-nightly-${{ matrix.goos }}-${{ matrix.goarch }}
         mkdir -p dist
         go build -v -ldflags "-X main.version=${VERSION}" -o dist/$BINARY_NAME
         cd dist
