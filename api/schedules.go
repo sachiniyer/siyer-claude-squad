@@ -5,9 +5,9 @@ import (
 	"path/filepath"
 	"time"
 
-	"claude-squad/config"
-	"claude-squad/log"
-	"claude-squad/schedule"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/schedule"
 
 	"github.com/spf13/cobra"
 )

@@ -38,7 +38,7 @@ type Message struct {
 	Timestamp  string
 }
 
-// MessageMeta contains metadata attached to messages sent from claude-squad.
+// MessageMeta contains metadata attached to messages sent from agent-factory.
 type MessageMeta struct {
 	RepoPath string `json:"repo_path,omitempty"`
 	RepoID   string `json:"repo_id,omitempty"`
@@ -382,7 +382,7 @@ func (b *Bridge) sendVioDB(chatID int64, content string) error {
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	_, err = db.Exec(
-		`INSERT INTO messages (id, chat_id, sender_name, content, is_from_bot, timestamp) VALUES (?, ?, 'Claude Squad', ?, 0, ?)`,
+		`INSERT INTO messages (id, chat_id, sender_name, content, is_from_bot, timestamp) VALUES (?, ?, 'Agent Factory', ?, 0, ?)`,
 		msgID, chatID, content, now,
 	)
 	if err != nil {

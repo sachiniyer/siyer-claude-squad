@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"claude-squad/log"
-	"claude-squad/microclaw"
-	"claude-squad/session/tmux"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/microclaw"
+	"github.com/sachiniyer/agent-factory/session/tmux"
 	"fmt"
 	"os"
 	"strings"

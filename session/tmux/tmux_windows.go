@@ -3,7 +3,7 @@
 package tmux
 
 import (
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/log"
 	"os"
 	"time"
 

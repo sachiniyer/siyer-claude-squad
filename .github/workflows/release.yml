@@ -1,0 +1,56 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    name: Build and Release
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        goos: [linux, darwin, windows]
+        goarch: [amd64, arm64]
+        exclude:
+          - goos: windows
+            goarch: arm64
+
+    steps:
+    - uses: actions/checkout@v4
+
+    - name: Set up Go
+      uses: actions/setup-go@v5
+      with:
+        go-version: '1.24'
+        cache: true
+
+    - name: Build
+      env:
+        GOOS: ${{ matrix.goos }}
+        GOARCH: ${{ matrix.goarch }}
+      run: |
+        BINARY_NAME=agent-factory
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          BINARY_NAME=$BINARY_NAME.exe
+        fi
+        ARCHIVE_NAME=agent-factory-${{ matrix.goos }}-${{ matrix.goarch }}
+        mkdir -p dist
+        go build -v -ldflags "-X main.version=${{ github.ref_name }}" -o dist/$BINARY_NAME
+        cd dist
+        if [ "${{ matrix.goos }}" = "windows" ]; then
+          zip ../${ARCHIVE_NAME}.zip $BINARY_NAME
+        else
+          tar czf ../${ARCHIVE_NAME}.tar.gz $BINARY_NAME
+        fi
+
+    - name: Upload release assets
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          *.tar.gz
+          *.zip

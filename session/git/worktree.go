@@ -1,8 +1,8 @@
 package git
 
 import (
-	"claude-squad/config"
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/log"
 	"fmt"
 	"os/exec"
 	"path/filepath"
@@ -56,7 +56,7 @@ type GitWorktree struct {
 	branchName string
 	// Base commit hash for the worktree
 	baseCommitSHA string
-	// externalWorktree is true if the worktree was not created by claude-squad
+	// externalWorktree is true if the worktree was not created by agent-factory
 	externalWorktree bool
 }
 
@@ -67,7 +67,7 @@ type WorktreeInfo struct {
 	IsMainWorktree bool
 }
 
-// IsExternalWorktree returns true if this worktree was not created by claude-squad
+// IsExternalWorktree returns true if this worktree was not created by agent-factory
 func (g *GitWorktree) IsExternalWorktree() bool {
 	return g.externalWorktree
 }
@@ -155,7 +155,7 @@ func (g *GitWorktree) GetBaseCommitSHA() string {
 }
 
 // NewGitWorktreeFromExistingWorktree creates a GitWorktree that points at an existing worktree
-// not created by claude-squad. It determines the baseCommitSHA via git merge-base.
+// not created by agent-factory. It determines the baseCommitSHA via git merge-base.
 func NewGitWorktreeFromExistingWorktree(repoPath, worktreePath, branchName string) (*GitWorktree, error) {
 	// Resolve the repo root
 	absRepo, err := filepath.Abs(repoPath)

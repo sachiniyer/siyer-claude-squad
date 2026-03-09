@@ -1,7 +1,7 @@
 package git
 
 import (
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/log"
 	"fmt"
 	"os"
 	"os/exec"
@@ -76,7 +76,6 @@ func (g *GitWorktree) setupNewWorktree() error {
 	// Create a new worktree from the HEAD commit
 	// Otherwise, we'll inherit uncommitted changes from the previous worktree.
 	// This way, we can start the worktree with a clean slate.
-	// TODO: we might want to give an option to use main/master instead of the current branch.
 	if _, err := g.runGitCommand(g.repoPath, "worktree", "add", "-b", g.branchName, g.worktreePath, headCommit); err != nil {
 		return fmt.Errorf("failed to create worktree from commit %s: %w", headCommit, err)
 	}
@@ -85,7 +84,7 @@ func (g *GitWorktree) setupNewWorktree() error {
 }
 
 // Cleanup removes the worktree and associated branch.
-// If the worktree was not created by claude-squad (externalWorktree), only prune is done.
+// If the worktree was not created by agent-factory (externalWorktree), only prune is done.
 func (g *GitWorktree) Cleanup() error {
 	// For external worktrees, don't remove the worktree or delete the branch
 	if g.externalWorktree {

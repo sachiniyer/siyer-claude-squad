@@ -42,7 +42,7 @@ if [ ! -f "$MICROCLAW_BIN" ]; then
     esac
 
     if [ -n "$ARCH" ]; then
-        MICROCLAW_URL="https://github.com/siyerif/microclaw/releases/latest/download/microclaw-${OS}-${ARCH}"
+        MICROCLAW_URL="https://github.com/microclaw/microclaw/releases/latest/download/microclaw-${OS}-${ARCH}"
         echo "Downloading microclaw from ${MICROCLAW_URL}..."
         if curl -fSL -o "$MICROCLAW_BIN" "$MICROCLAW_URL" 2>/dev/null; then
             chmod +x "$MICROCLAW_BIN"
@@ -61,7 +61,7 @@ if [ ! -f "$MICROCLAW_CONFIG" ]; then
     mkdir -p "$MICROCLAW_DIR"
     cat > "$MICROCLAW_CONFIG" << 'YAML'
 # MicroClaw configuration
-# See https://github.com/siyerif/microclaw for documentation
+# See https://github.com/microclaw/microclaw for documentation
 
 llm:
   provider: anthropic

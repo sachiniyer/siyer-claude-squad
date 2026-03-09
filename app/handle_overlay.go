@@ -1,13 +1,13 @@
 package app
 
 import (
-	"claude-squad/keys"
-	"claude-squad/log"
-	"claude-squad/session"
-	"claude-squad/session/git"
-	"claude-squad/task"
-	"claude-squad/ui"
-	"claude-squad/ui/overlay"
+	"github.com/sachiniyer/agent-factory/keys"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/session"
+	"github.com/sachiniyer/agent-factory/session/git"
+	"github.com/sachiniyer/agent-factory/task"
+	"github.com/sachiniyer/agent-factory/ui"
+	"github.com/sachiniyer/agent-factory/ui/overlay"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"

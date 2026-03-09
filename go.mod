@@ -1,4 +1,4 @@
-module claude-squad
+module github.com/sachiniyer/agent-factory
 
 go 1.24.0
 

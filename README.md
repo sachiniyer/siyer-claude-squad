@@ -1,103 +1,183 @@
-# siyer-claude-squad
+# Agent Factory
 
-Fork of [claude-squad](https://github.com/smtg-ai/claude-squad) with per-repo scoping, task management, a programmatic API, and [MicroClaw](https://microclaw.ai) integration.
+A terminal UI that manages multiple AI coding agents (Claude Code, Aider, Codex, Amp) in separate git worktrees. Each agent runs in its own isolated workspace with full git integration, a kanban board for task tracking, and a programmatic API for orchestration.
 
-## What's different from upstream
+Fork of [claude-squad](https://github.com/smtg-ai/claude-squad) with per-repo scoping, kanban board, programmatic API, scheduled tasks, and [MicroClaw](https://microclaw.ai) integration.
 
-### Per-repo scoping
+## Quick Start
 
-Instances, tasks, and schedules are scoped to the current git repository instead of being global.
+### Prerequisites
 
-- **Instances** stored per-repo at `~/.claude-squad/instances/<repoID>/instances.json` (auto-migrated from the old global `state.json`)
-- **Schedules** filtered to the current repo in the TUI and schedule list
-- **`repoID`** derived from SHA-256 of the git root path — shared across `config.RepoContext`
-- The daemon loads instances from all repos; the TUI scopes to whichever repo you're in
+- **Go 1.24+**
+- **tmux** (terminal multiplexer)
+- **git**
+- An AI coding agent installed (e.g. [Claude Code](https://docs.anthropic.com/en/docs/claude-code))
 
-### Per-repo task list (press `t`)
+### Install
 
-A todo list overlay for managing tasks per repository.
+```bash
+# From source (recommended)
+git clone https://github.com/sachiniyer/agent-factory.git
+cd agent-factory
+./dev-install.sh
 
-- Press `t` to open the task list
-- Add, toggle, and delete tasks
-- Tasks stored at `~/.claude-squad/tasks/<repoID>/tasks.json`
+# Or build manually
+go build -o cs .
+```
 
-### Attach to existing worktrees (press `a`)
+The `dev-install.sh` script builds the `cs` binary, installs it to `~/.local/bin/`, and sets up [MicroClaw](https://microclaw.ai) for multi-agent orchestration.
 
-Create a session against an existing git worktree instead of always creating a new one.
+### Usage
 
-- Press `a` to see all worktrees for the current repo
-- Worktrees that already have a session are annotated with `[has session]`
-- Select a worktree, name the session, and it attaches to the existing branch
+```bash
+cd your-project    # must be a git repo
+cs                 # launch the TUI
+```
 
-### `cs api` — Programmatic JSON API
+Press `?` for the full keybindings help screen.
 
-A CLI subcommand tree for driving claude-squad without the TUI. All commands output JSON to stdout, errors to stderr.
+## Features
+
+### Session Management
+
+Each session runs an AI agent in an isolated git worktree with its own branch. Sessions persist across restarts.
+
+| Key | Action |
+|-----|--------|
+| `n` | Create a new session |
+| `N` | Create a session with an initial prompt |
+| `Enter` / `o` | Attach to selected session |
+| `Ctrl-w` | Detach from session |
+| `D` | Kill (delete) selected session |
+| `j` / `k` | Navigate sessions |
+| `a` | Attach to an existing worktree |
+| `Tab` | Switch between preview, diff, and terminal |
+
+### Kanban Board
+
+A per-repo kanban board with four columns: Backlog, In Progress, Review, Done. Tasks can be linked to sessions.
+
+| Key | Action |
+|-----|--------|
+| `t` | Navigate to kanban board |
+| `n` | Add new task (when focused) |
+| `m` | Grab/drop task to move between columns |
+| `d` | Delete task |
+| `o` | Jump to linked session |
+| `a` | Link/attach session to task |
+| `c` | Clear all done tasks |
+
+### Scheduled Tasks
+
+Create recurring scheduled tasks with cron expressions. Schedules are backed by systemd timers (Linux).
+
+| Key | Action |
+|-----|--------|
+| `s` | Create a new schedule |
+| `S` | List scheduled tasks |
+| `r` | Run selected schedule now |
+
+### GitHub PR Integration
+
+Automatically detects pull requests for session branches via `gh pr view`.
+
+| Key | Action |
+|-----|--------|
+| `p` | Open PR in browser |
+| `P` | Copy PR URL to clipboard |
+
+### Worktree Hooks
+
+Per-repo shell commands that run when a new worktree is created (e.g. `npm install`, `make build`).
+
+| Key | Action |
+|-----|--------|
+| `H` | Navigate to hooks section |
+
+## Per-Repo Scoping
+
+All data (sessions, tasks, schedules) is scoped to the current git repository. The TUI shows only what's relevant to the repo you're in.
+
+- Sessions stored at `~/.agent-factory/instances/<repoID>/instances.json`
+- Tasks stored at `~/.agent-factory/tasks/<repoID>/board.json`
+- Configuration at `~/.agent-factory/config.json`
+
+## Programmatic API
+
+The `cs api` subcommand provides a JSON CLI for driving Agent Factory without the TUI:
 
 ```bash
 # Sessions
-cs api sessions list [--repo <path>]
-cs api sessions get <title>
-cs api sessions create --repo <path> --name <name> [--prompt <text>] [--program <prog>]
-cs api sessions send-prompt <title> <prompt>
-cs api sessions preview <title>
-cs api sessions diff <title>
-cs api sessions kill <title>
-cs api sessions push <title> [--message <msg>]
-cs api sessions pause <title>
-cs api sessions resume <title>
+cs api sessions list
+cs api sessions create --name my-task --prompt "fix the login bug"
+cs api sessions preview my-task
+cs api sessions diff my-task
+cs api sessions kill my-task
+
+# Kanban board
+cs api tasks board
+cs api tasks add --title "fix auth" --status in_progress
+cs api tasks move <id> --status done
+cs api tasks link <id> --instance my-task
 
 # Schedules
-cs api schedules list [--repo <path>]
-cs api schedules add --repo <path> --prompt <text> --cron <expr> [--program <prog>]
+cs api schedules list
+cs api schedules add --name "Daily triage" --prompt "triage new issues" --cron "0 9 * * *"
 cs api schedules remove <id>
-
-# Tasks
-cs api tasks list --repo <path>
-cs api tasks add --repo <path> --title <text>
-cs api tasks toggle <id> --repo <path>
-cs api tasks remove <id> --repo <path>
 ```
 
-Supports `--repo` and `--repo-id` flags for repo scoping from outside git directories.
+All commands output JSON to stdout and errors to stderr. Use `--repo <path>` or `--repo-id <id>` to target a specific repository.
 
-### MicroClaw integration
+## MicroClaw Integration
 
-Bidirectional bridge to a running [MicroClaw](https://microclaw.ai) instance. MicroClaw runs directly on the host (no Docker containers), so agents have full bash and filesystem access.
+[MicroClaw](https://microclaw.ai) is an agentic AI assistant that runs on your machine. Agent Factory integrates with it bidirectionally:
 
-- **MicroClaw tab** — 4th tab in the TUI (press `tab` to cycle). Shows chat history from microclaw's SQLite database with scrolling.
-- **Send messages** — Press `m` to compose a message to microclaw. Messages include repo metadata and instructions for the agent to use `cs api` CLI commands directly.
-- **Direct CLI access** — MicroClaw agents use `cs api` commands directly for session/task management (no MCP bridge needed).
-- **Configuration** — Set `MICROCLAW_DIR` env var (defaults to `~/.microclaw`). The tab only appears when a valid microclaw installation is detected.
+- **MicroClaw tab** in the TUI shows chat history (press `Tab` to cycle)
+- **Send messages** with `m` to have MicroClaw orchestrate your sessions
+- MicroClaw agents use `cs api` commands directly for session/task management
+
+The `dev-install.sh` script sets up MicroClaw automatically. Configure your API key in `~/.microclaw/microclaw.config.yaml` before starting.
 
 ```bash
-MICROCLAW_DIR=~/.microclaw cs
+# Start MicroClaw
+microclaw start
+
+# Or via systemd (Linux)
+systemctl --user enable --now microclaw
 ```
 
-### GitHub PR integration
+## Configuration
 
-Automatically detects pull requests for instance branches via `gh pr view`.
+Configuration lives at `~/.agent-factory/config.json`:
 
-- PR info (number, title, state) displayed as a third line under each instance in the sidebar
-- Press `p` to open the PR in your browser
-- Press `P` to copy the PR URL to clipboard
-- PR info persists across restarts and refreshes every 60 seconds
+```json
+{
+  "default_program": "claude --dangerously-skip-permissions",
+  "auto_yes": false,
+  "daemon_poll_interval": 1000,
+  "branch_prefix": "username/",
+  "worktree_root": "subdirectory"
+}
+```
 
-### Post-worktree hooks (press `H`)
+| Field | Description |
+|-------|-------------|
+| `default_program` | AI agent command to run (auto-detected) |
+| `auto_yes` | Auto-accept agent prompts |
+| `daemon_poll_interval` | Daemon polling interval in ms |
+| `branch_prefix` | Prefix for worktree branches (defaults to `username/`) |
+| `worktree_root` | Where worktrees are created: `subdirectory` (under `~/.agent-factory`) or `sibling` (next to repo) |
 
-Per-repo shell commands that run asynchronously when a new worktree is created — useful for build/install steps.
+Override the program per-session with `-p`:
 
-- Press `H` to navigate to the Hooks section in the sidebar
-- Press `Enter` to focus, then `n` to add, `Enter` to edit, `D` to delete
-- Commands run via `sh -c` in the new worktree directory, in the background
-- Config stored at `~/.claude-squad/repos/<repoID>/config.json`
-
-### Internal changes
-
-- **`config.RepoContext`** — shared abstraction for repo identification and scoped path resolution
-- **Repo-explicit task functions** — `LoadTasksForRepo`, `AddTaskForRepo`, `ToggleTaskForRepo`, `DeleteTaskForRepo` accept a `*config.RepoContext`
-- **Exported `schedule.WaitForReady`** — reused by the API create command
-- **`config.RepoConfig`** — per-repo configuration for hooks and other repo-specific settings
+```bash
+cs -p "aider --model ollama_chat/gemma3:1b"
+```
 
 ## Upstream
 
-For installation, usage, keybindings, and general documentation, see the upstream project: [smtg-ai/claude-squad](https://github.com/smtg-ai/claude-squad)
+For general documentation about the original claude-squad project, see [smtg-ai/claude-squad](https://github.com/smtg-ai/claude-squad).
+
+## License
+
+[GNU AGPL v3](LICENSE.md)

@@ -1,9 +1,9 @@
 package session
 
 import (
-	"claude-squad/log"
-	"claude-squad/session/git"
-	"claude-squad/session/tmux"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/session/git"
+	"github.com/sachiniyer/agent-factory/session/tmux"
 	"path/filepath"
 
 	"fmt"
@@ -249,7 +249,7 @@ func (i *Instance) Start(firstTimeSetup bool) error {
 			return setupErr
 		}
 
-		// Inject Claude Squad instructions into the session. For CLI-based tools
+		// Inject Agent Factory instructions into the session. For CLI-based tools
 		// (Claude Code) this modifies the program command. For file-based tools
 		// (Codex, Amp, OpenCode) this writes an instruction file into the worktree.
 		i.tmuxSession.SetProgram(

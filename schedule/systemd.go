@@ -11,7 +11,7 @@ import (
 )
 
 func getUnitName(s Schedule) string {
-	return "claude-squad-sched-" + s.ID
+	return "agent-factory-sched-" + s.ID
 }
 
 func getSystemdUserDir() (string, error) {
@@ -48,7 +48,7 @@ func InstallSystemdTimer(s Schedule) error {
 	}
 
 	serviceContent := fmt.Sprintf(`[Unit]
-Description=Claude Squad scheduled task %s
+Description=Agent Factory scheduled task %s
 
 [Service]
 Type=oneshot
@@ -71,7 +71,7 @@ WorkingDirectory=%s
 	}
 
 	timerContent := fmt.Sprintf(`[Unit]
-Description=Timer for Claude Squad scheduled task %s
+Description=Timer for Agent Factory scheduled task %s
 
 [Timer]
 OnCalendar=%s

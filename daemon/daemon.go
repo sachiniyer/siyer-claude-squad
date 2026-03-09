@@ -1,9 +1,9 @@
 package daemon
 
 import (
-	"claude-squad/config"
-	"claude-squad/log"
-	"claude-squad/session"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/session"
 	"fmt"
 	"os"
 	"os/exec"
@@ -87,7 +87,7 @@ func RunDaemon(cfg *config.Config) error {
 
 // LaunchDaemon launches the daemon process.
 func LaunchDaemon() error {
-	// Find the claude squad binary.
+	// Find the agent-factory binary.
 	execPath, err := os.Executable()
 	if err != nil {
 		return fmt.Errorf("failed to get executable path: %w", err)

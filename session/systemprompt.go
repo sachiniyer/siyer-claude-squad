@@ -6,8 +6,8 @@ import (
 )
 
 // systemPromptTemplate is the template for the system prompt injected into AI sessions.
-// It tells the AI about its Claude Squad context and available CLI commands.
-const systemPromptTemplate = `You are running inside Claude Squad (cs), a terminal multiplexer for AI coding agents.
+// It tells the AI about its Agent Factory context and available CLI commands.
+const systemPromptTemplate = `You are running inside Agent Factory (cs), a terminal multiplexer for AI coding agents.
 
 Your session name: %s
 
@@ -50,15 +50,11 @@ func shellQuote(s string) string {
 	return "'" + strings.ReplaceAll(s, "'", "'\\''") + "'"
 }
 
-// injectSystemPrompt injects Claude Squad instructions into the session.
+// injectSystemPrompt injects Agent Factory instructions into the session.
 //
 // Strategy per tool:
 //   - Claude Code: --append-system-prompt flag (appended to program command)
 //   - Codex: -c developer_instructions="..." flag (appended to program command)
-//
-// TODO: Add support for Amp (reads AGENT.md), OpenCode (reads AGENTS.md), and other tools.
-// These tools don't have CLI flags for system prompt injection — they only read project-level
-// instruction files. We could write those files into the worktree, but that approach is deferred.
 //
 // Returns the (possibly modified) program string.
 func injectSystemPrompt(program, sessionTitle, worktreePath string) string {

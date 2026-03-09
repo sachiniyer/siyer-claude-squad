@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"claude-squad/schedule"
+	"github.com/sachiniyer/agent-factory/schedule"
 	"fmt"
 	"strings"
 

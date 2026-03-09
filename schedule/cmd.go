@@ -1,7 +1,7 @@
 package schedule
 
 import (
-	"claude-squad/config"
+	"github.com/sachiniyer/agent-factory/config"
 	"fmt"
 	"os"
 	"path/filepath"

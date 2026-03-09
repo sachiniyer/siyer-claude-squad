@@ -51,7 +51,7 @@ func repoContextFromRoot(root string) *RepoContext {
 	}
 }
 
-// DataDir returns the path ~/.claude-squad/<subdir>/<repoID>/, creating it if necessary.
+// DataDir returns the path ~/.agent-factory/<subdir>/<repoID>/, creating it if necessary.
 func (rc *RepoContext) DataDir(subdir string) (string, error) {
 	configDir, err := GetConfigDir()
 	if err != nil {

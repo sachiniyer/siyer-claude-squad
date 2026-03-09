@@ -1,8 +1,8 @@
 package ui
 
 import (
-	"claude-squad/schedule"
-	"claude-squad/session"
+	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/session"
 	"testing"
 	"time"
 

@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"claude-squad/task"
+	"github.com/sachiniyer/agent-factory/task"
 	"fmt"
 	"strings"
 	"time"

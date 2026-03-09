@@ -1,7 +1,7 @@
 package config
 
 import (
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/log"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -27,7 +27,7 @@ func GetConfigDir() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("failed to get config home directory: %w", err)
 	}
-	return filepath.Join(homeDir, ".claude-squad"), nil
+	return filepath.Join(homeDir, ".agent-factory"), nil
 }
 
 // Config represents the application configuration

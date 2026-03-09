@@ -1,7 +1,7 @@
 package tmux
 
 import (
-	cmd2 "claude-squad/cmd"
+	cmd2 "github.com/sachiniyer/agent-factory/cmd"
 	"fmt"
 	"math/rand"
 	"os"
@@ -10,7 +10,7 @@ import (
 	"strings"
 	"testing"
 
-	"claude-squad/cmd/cmd_test"
+	"github.com/sachiniyer/agent-factory/cmd/cmd_test"
 
 	"github.com/stretchr/testify/require"
 )

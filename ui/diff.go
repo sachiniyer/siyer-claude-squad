@@ -1,7 +1,7 @@
 package ui
 
 import (
-	"claude-squad/session"
+	"github.com/sachiniyer/agent-factory/session"
 	"fmt"
 	"strings"
 

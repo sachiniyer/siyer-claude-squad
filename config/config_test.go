@@ -1,7 +1,7 @@
 package config
 
 import (
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/log"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -119,7 +119,7 @@ func TestGetConfigDir(t *testing.T) {
 
 		assert.NoError(t, err)
 		assert.NotEmpty(t, configDir)
-		assert.True(t, strings.HasSuffix(configDir, ".claude-squad"))
+		assert.True(t, strings.HasSuffix(configDir, ".agent-factory"))
 
 		// Verify it's an absolute path
 		assert.True(t, filepath.IsAbs(configDir))
@@ -146,7 +146,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("loads valid config file", func(t *testing.T) {
 		// Create a temporary config directory
 		tempHome := t.TempDir()
-		configDir := filepath.Join(tempHome, ".claude-squad")
+		configDir := filepath.Join(tempHome, ".agent-factory")
 		err := os.MkdirAll(configDir, 0755)
 		require.NoError(t, err)
 
@@ -179,7 +179,7 @@ func TestLoadConfig(t *testing.T) {
 
 	t.Run("defaults worktree_root when missing from existing config", func(t *testing.T) {
 		tempHome := t.TempDir()
-		configDir := filepath.Join(tempHome, ".claude-squad")
+		configDir := filepath.Join(tempHome, ".agent-factory")
 		err := os.MkdirAll(configDir, 0755)
 		require.NoError(t, err)
 
@@ -204,7 +204,7 @@ func TestLoadConfig(t *testing.T) {
 	t.Run("returns default config on invalid JSON", func(t *testing.T) {
 		// Create a temporary config directory
 		tempHome := t.TempDir()
-		configDir := filepath.Join(tempHome, ".claude-squad")
+		configDir := filepath.Join(tempHome, ".agent-factory")
 		err := os.MkdirAll(configDir, 0755)
 		require.NoError(t, err)
 
@@ -253,7 +253,7 @@ func TestSaveConfig(t *testing.T) {
 		assert.NoError(t, err)
 
 		// Verify the file was created
-		configDir := filepath.Join(tempHome, ".claude-squad")
+		configDir := filepath.Join(tempHome, ".agent-factory")
 		configPath := filepath.Join(configDir, ConfigFileName)
 
 		assert.FileExists(t, configPath)

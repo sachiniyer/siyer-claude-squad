@@ -1,17 +1,17 @@
 package main
 
 import (
-	"claude-squad/api"
-	"claude-squad/app"
-	cmd2 "claude-squad/cmd"
-	"claude-squad/config"
-	"claude-squad/daemon"
-	"claude-squad/log"
-	"claude-squad/microclaw"
-	"claude-squad/schedule"
-	"claude-squad/session"
-	"claude-squad/session/git"
-	"claude-squad/session/tmux"
+	"github.com/sachiniyer/agent-factory/api"
+	"github.com/sachiniyer/agent-factory/app"
+	cmd2 "github.com/sachiniyer/agent-factory/cmd"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/daemon"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/microclaw"
+	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/session"
+	"github.com/sachiniyer/agent-factory/session/git"
+	"github.com/sachiniyer/agent-factory/session/tmux"
 	"context"
 	"encoding/json"
 	"fmt"
@@ -26,8 +26,8 @@ var (
 	autoYesFlag bool
 	daemonFlag  bool
 	rootCmd     = &cobra.Command{
-		Use:   "claude-squad",
-		Short: "Claude Squad - Manage multiple AI agents like Claude Code, Aider, Codex, and Amp.",
+		Use:   "cs",
+		Short: "Agent Factory - Manage multiple AI agents like Claude Code, Aider, Codex, and Amp.",
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx := context.Background()
 			log.Initialize(daemonFlag)
@@ -47,7 +47,7 @@ var (
 			}
 
 			if !git.IsGitRepo(currentDir) {
-				return fmt.Errorf("error: claude-squad must be run from within a git repository")
+				return fmt.Errorf("error: agent-factory must be run from within a git repository")
 			}
 
 			repo, err := config.CurrentRepo()
@@ -145,10 +145,10 @@ var (
 
 	versionCmd = &cobra.Command{
 		Use:   "version",
-		Short: "Print the version number of claude-squad",
+		Short: "Print the version number of agent-factory",
 		Run: func(cmd *cobra.Command, args []string) {
-			fmt.Printf("claude-squad version %s\n", version)
-			fmt.Printf("https://github.com/smtg-ai/claude-squad/releases/tag/v%s\n", version)
+			fmt.Printf("agent-factory version %s\n", version)
+			fmt.Printf("https://github.com/sachiniyer/agent-factory/releases/tag/v%s\n", version)
 		},
 	}
 )

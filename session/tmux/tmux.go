@@ -2,8 +2,8 @@ package tmux
 
 import (
 	"bytes"
-	"claude-squad/cmd"
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/cmd"
+	"github.com/sachiniyer/agent-factory/log"
 	"context"
 	"crypto/sha256"
 	"errors"
@@ -203,7 +203,6 @@ func newStatusMonitor() *statusMonitor {
 // hash hashes the string.
 func (m *statusMonitor) hash(s string) []byte {
 	h := sha256.New()
-	// TODO: this allocation sucks since the string is probably large. Ideally, we hash the string directly.
 	h.Write([]byte(s))
 	return h.Sum(nil)
 }

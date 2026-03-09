@@ -1,8 +1,8 @@
 package session
 
 import (
-	"claude-squad/config"
-	"claude-squad/log"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/log"
 	"encoding/json"
 	"fmt"
 	"time"

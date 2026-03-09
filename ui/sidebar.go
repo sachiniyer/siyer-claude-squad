@@ -1,9 +1,9 @@
 package ui
 
 import (
-	"claude-squad/log"
-	"claude-squad/schedule"
-	"claude-squad/session"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/schedule"
+	"github.com/sachiniyer/agent-factory/session"
 	"fmt"
 	"strings"
 
@@ -391,10 +391,10 @@ func (s *Sidebar) String() string {
 	titleWidth := AdjustPreviewWidth(s.width) + 2
 	if !s.autoyes {
 		b.WriteString(lipgloss.Place(
-			titleWidth, 1, lipgloss.Left, lipgloss.Bottom, mainTitle.Render(" Claude Squad ")))
+			titleWidth, 1, lipgloss.Left, lipgloss.Bottom, mainTitle.Render(" Agent Factory ")))
 	} else {
 		title := lipgloss.Place(
-			titleWidth/2, 1, lipgloss.Left, lipgloss.Bottom, mainTitle.Render(" Claude Squad "))
+			titleWidth/2, 1, lipgloss.Left, lipgloss.Bottom, mainTitle.Render(" Agent Factory "))
 		autoYes := lipgloss.Place(
 			titleWidth-(titleWidth/2), 1, lipgloss.Right, lipgloss.Bottom, autoYesStyle.Render(" auto-yes "))
 		b.WriteString(lipgloss.JoinHorizontal(lipgloss.Top, title, autoYes))

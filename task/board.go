@@ -1,7 +1,7 @@
 package task
 
 import (
-	"claude-squad/config"
+	"github.com/sachiniyer/agent-factory/config"
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"

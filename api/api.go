@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"claude-squad/config"
-	"claude-squad/session"
+	"github.com/sachiniyer/agent-factory/config"
+	"github.com/sachiniyer/agent-factory/session"
 
 	"github.com/spf13/cobra"
 )
@@ -110,7 +110,7 @@ func jsonError(err error) error {
 var ApiCmd = &cobra.Command{
 	Use:   "api",
 	Short: "Programmatic JSON API for external orchestrators",
-	Long:  "Machine-readable CLI interface for driving claude-squad sessions, schedules, and tasks.",
+	Long:  "Machine-readable CLI interface for driving agent-factory sessions, schedules, and tasks.",
 }
 
 func init() {

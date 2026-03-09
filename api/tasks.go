@@ -3,8 +3,8 @@ package api
 import (
 	"fmt"
 
-	"claude-squad/log"
-	"claude-squad/task"
+	"github.com/sachiniyer/agent-factory/log"
+	"github.com/sachiniyer/agent-factory/task"
 
 	"github.com/spf13/cobra"
 )

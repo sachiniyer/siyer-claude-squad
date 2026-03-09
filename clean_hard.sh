@@ -1,4 +1,4 @@
 tmux kill-server
 rm -rf worktree*
-rm -rf ~/.claude-squad
+rm -rf ~/.agent-factory
 git worktree prune

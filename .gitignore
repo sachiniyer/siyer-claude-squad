@@ -1,5 +1,33 @@
-.idea
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# AI tools
 .aider*
-claude-squad
-**.DS_Store
+
+# Build artifacts
+agent-factory
 cs
+*.exe
+*.dll
+*.so
+*.dylib
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test
+*.test
+*.out
+coverage.txt
+
+# Go
+vendor/
+
+# Debug
+*.prof
+__debug_bin*

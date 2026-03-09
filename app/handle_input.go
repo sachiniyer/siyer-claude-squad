@@ -1,9 +1,9 @@
 package app
 
 import (
-	"claude-squad/session"
-	"claude-squad/ui"
-	"claude-squad/ui/overlay"
+	"github.com/sachiniyer/agent-factory/session"
+	"github.com/sachiniyer/agent-factory/ui"
+	"github.com/sachiniyer/agent-factory/ui/overlay"
 	"fmt"
 
 	tea "github.com/charmbracelet/bubbletea"
