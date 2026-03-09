@@ -21,23 +21,23 @@ Session commands:
   af api sessions diff <title>                  Get diff stats for a session
 
 Task commands (kanban board):
-  af api tasks board                                    Get kanban board (columns + tasks)
-  af api tasks list                                     List all tasks (flat)
-  af api tasks add --title "description"                Add task to backlog
-  af api tasks add --title "desc" --status in_progress  Add task to specific column
-  af api tasks move <id> --status in_progress           Move task between columns
-  af api tasks link <id> --instance "my-session"        Link yourself to a task
-  af api tasks unlink <id>                              Remove linkage
-  af api tasks toggle <id>                              Mark a task as done/not done
-  af api tasks remove <id>                              Remove a task
+  af api board view                                     Get kanban board (columns + tasks)
+  af api board list                                     List all tasks (flat)
+  af api board add --title "description"                Add task to backlog
+  af api board add --title "desc" --status in_progress  Add task to specific column
+  af api board move <id> --status in_progress           Move task between columns
+  af api board link <id> --instance "my-session"        Link yourself to a task
+  af api board unlink <id>                              Remove linkage
+  af api board toggle <id>                              Mark a task as done/not done
+  af api board remove <id>                              Remove a task
 Available columns: backlog, in_progress, review, done
 
 Self-assignment workflow:
-  1. af api tasks board                              # See available tasks
-  2. af api tasks move <id> --status in_progress     # Claim a task
-  3. af api tasks link <id> --instance "YOUR_SESSION" # Link yourself
+  1. af api board view                               # See available tasks
+  2. af api board move <id> --status in_progress     # Claim a task
+  3. af api board link <id> --instance "YOUR_SESSION" # Link yourself
   4. ... do the work ...
-  5. af api tasks move <id> --status done             # Mark complete`
+  5. af api board move <id> --status done             # Mark complete`
 
 // buildSystemPrompt returns the system prompt text for a session.
 func buildSystemPrompt(sessionTitle string) string {
