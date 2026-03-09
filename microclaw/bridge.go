@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"net/http/cookiejar"
 	"os"
@@ -96,18 +95,14 @@ func (b *Bridge) dbPath() string {
 	return filepath.Join(b.MicroClawDir, "runtime", "microclaw.db")
 }
 
-// Available returns true if the microclaw Web API is reachable, falling back to DB file check.
+// Available returns true if the microclaw Web API is reachable.
 func (b *Bridge) Available() bool {
 	resp, err := b.httpClient.Get(b.apiBaseURL + "/api/auth/status")
-	if err == nil {
-		resp.Body.Close()
-		if resp.StatusCode == 200 || resp.StatusCode == 401 {
-			return true
-		}
+	if err != nil {
+		return false
 	}
-	// Fall back to DB file check
-	_, err = os.Stat(b.dbPath())
-	return err == nil
+	resp.Body.Close()
+	return resp.StatusCode == 200 || resp.StatusCode == 401
 }
 
 // login authenticates with the microclaw Web API and stores the CSRF token.
@@ -278,7 +273,7 @@ func (b *Bridge) GetMessagesForChat(chatID int64, limit int) ([]Message, error) 
 // SendMessage sends a message to microclaw via the Web API.
 // The message is posted to /api/send_stream which triggers immediate LLM processing.
 // Responses appear in the DB and are picked up by the TUI's poll loop.
-func (b *Bridge) SendMessage(chatID int64, text string, meta *MessageMeta) error {
+func (b *Bridge) SendMessage(text string, meta *MessageMeta) error {
 	// Build content with metadata context
 	content := text
 	if meta != nil {
@@ -298,14 +293,7 @@ func (b *Bridge) SendMessage(chatID int64, text string, meta *MessageMeta) error
 		}
 	}
 
-	// Try Web API first
-	err := b.sendViaAPI(content)
-	if err == nil {
-		return nil
-	}
-
-	// Fall back to direct DB insert if API is unavailable
-	return b.sendVioDB(chatID, content)
+	return b.sendViaAPI(content)
 }
 
 // sendViaAPI posts the message to microclaw's Web API.
@@ -370,31 +358,6 @@ func (b *Bridge) sendViaAPI(content string) error {
 	return nil
 }
 
-// sendVioDB falls back to inserting the message directly into the SQLite database.
-func (b *Bridge) sendVioDB(chatID int64, content string) error {
-	db, err := b.openDB()
-	if err != nil {
-		return err
-	}
-	defer db.Close()
-
-	msgID := fmt.Sprintf("af-bridge-%d-%s", time.Now().UnixMilli(), randomString(6))
-	now := time.Now().UTC().Format(time.RFC3339)
-
-	_, err = db.Exec(
-		`INSERT INTO messages (id, chat_id, sender_name, content, is_from_bot, timestamp) VALUES (?, ?, 'Agent Factory', ?, 0, ?)`,
-		msgID, chatID, content, now,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to insert message: %w", err)
-	}
-
-	// Update last_message_time on the chat
-	_, _ = db.Exec(`UPDATE chats SET last_message_time = ? WHERE chat_id = ?`, now, chatID)
-
-	return nil
-}
-
 // Status returns a summary of the microclaw instance.
 func (b *Bridge) Status() (string, error) {
 	db, err := b.openDB()
@@ -417,13 +380,4 @@ func (b *Bridge) Status() (string, error) {
 	}
 
 	return fmt.Sprintf("Chats: %d | Messages: %d | Active tasks: %d", chats, messages, tasks), nil
-}
-
-func randomString(n int) string {
-	const letters = "abcdefghijklmnopqrstuvwxyz0123456789"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = letters[rand.Intn(len(letters))]
-	}
-	return string(b)
 }

@@ -90,7 +90,7 @@ func (m tuiModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case tea.KeyEnter:
 			text := strings.TrimSpace(m.input.Value())
 			if text != "" {
-				if err := m.bridge.SendMessage(m.chatID, text, m.meta); err != nil {
+				if err := m.bridge.SendMessage(text, m.meta); err != nil {
 					m.err = err
 				} else {
 					m.input.Reset()
