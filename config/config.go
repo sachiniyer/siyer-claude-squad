@@ -66,7 +66,7 @@ func DefaultConfig() *Config {
 			}
 			return fmt.Sprintf("%s/", strings.ToLower(user.Username))
 		}(),
-		WorktreeRoot: WorktreeRootSubdirectory,
+		WorktreeRoot: WorktreeRootSibling,
 	}
 }
 
@@ -148,7 +148,7 @@ func LoadConfig() *Config {
 	}
 
 	if config.WorktreeRoot == "" {
-		config.WorktreeRoot = WorktreeRootSubdirectory
+		config.WorktreeRoot = WorktreeRootSibling
 	}
 
 	return &config

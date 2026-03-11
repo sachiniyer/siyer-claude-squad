@@ -108,7 +108,7 @@ func TestDefaultConfig(t *testing.T) {
 		assert.Equal(t, 1000, config.DaemonPollInterval)
 		assert.NotEmpty(t, config.BranchPrefix)
 		assert.True(t, strings.HasSuffix(config.BranchPrefix, "/"))
-		assert.Equal(t, WorktreeRootSubdirectory, config.WorktreeRoot)
+		assert.Equal(t, WorktreeRootSibling, config.WorktreeRoot)
 	})
 
 }
@@ -198,7 +198,7 @@ func TestLoadConfig(t *testing.T) {
 		defer os.Setenv("HOME", originalHome)
 
 		loadedConfig := LoadConfig()
-		assert.Equal(t, WorktreeRootSubdirectory, loadedConfig.WorktreeRoot)
+		assert.Equal(t, WorktreeRootSibling, loadedConfig.WorktreeRoot)
 	})
 
 	t.Run("returns default config on invalid JSON", func(t *testing.T) {
@@ -226,7 +226,7 @@ func TestLoadConfig(t *testing.T) {
 		assert.NotEmpty(t, config.DefaultProgram)
 		assert.False(t, config.AutoYes)                  // Default value
 		assert.Equal(t, 1000, config.DaemonPollInterval) // Default value
-		assert.Equal(t, WorktreeRootSubdirectory, config.WorktreeRoot)
+		assert.Equal(t, WorktreeRootSibling, config.WorktreeRoot)
 	})
 }
 
